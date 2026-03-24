@@ -1,0 +1,18 @@
+target_label: str
+target_path: str # as in /dev/...
+only_usb: bool = False
+directory: str # inside the device
+quota: float # maximum space occupied by the repo
+progress: bool = True # wether to show progress
+stats: bool = False # wether to show stats
+compression: str # execute borg help compression for details
+max_archives: int # the maximum number of archives
+repos: list[dict]
+
+Repo:
+    path: str # must be set. It's read relatively from the HOME directory
+    include: list[str] # supports shell globs
+    exclude: list[str] # supports fnmatch patterns
+    git: bool = False # objects in include will be added on top of the one in the git repo
+    directories: list[str] # with this option, the program will run for all the given directories
+                           # if a file is given, an error will be returned
