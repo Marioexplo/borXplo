@@ -2,7 +2,7 @@ target_label: str
 target_path: str # as in /dev/...
 only_usb: bool = False
 directory: str # inside the device
-quota: float # maximum space occupied by the repo
+quota: float # maximum space occupied by the repo in Gb
 progress: bool = True # wether to show progress
 stats: bool = False # wether to show stats
 compression: str # execute borg help compression for details
