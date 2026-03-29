@@ -63,10 +63,12 @@ else:
         target_label = get_key("target_label", str)
         if target_label is None:
             error("target_label or target_path must be given to find your device")
-        subsystem = "block" if getattr(config, "only_usb", True) else "usb"
         devices: list[pyudev.Device] = list()
         key = "ID_FS_LABEL"
-        for device in device_database.list_devices(subsystem=subsystem):
+        storages = device_database.list_devices(subsystem="block")
+        if get_key("only_usb", bool):
+            storages = [i for i in storages if i.find_parent(subsystem="usb")]
+        for device in storages:
             if key in device.properties and device.properties[key] == target_dir:
                 devices.append(device)
         match len(devices):
@@ -111,7 +113,8 @@ env["PATH"] = "/usr/bin:/bin"
 
 # borg helper
 borg_command = ["borg"]
-if get_key("progress", bool):
+progress = get_key("progress", bool)
+if sys.argv[1] != "automatic" if progress is None else progress:
     borg_command.append("--progress")
 def borg(args: list[str])->None|typing.Never:
     process = subprocess.run(borg_command + args, env=env)
