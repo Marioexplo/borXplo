@@ -65,32 +65,21 @@ def main() -> None:
             for device in storages:
                 if key in device.properties and device.properties[key] == target_dir:
                     devices.append(device)
-            match len(devices):
-                case 0:
-                    error(f"No device starting with '{target_dir}' was found")
-                case 1:
-                    device = devices[0]
-                case _:
-                    print(f"More than one device labelled '{target_dir}' was found.\nChoose one:")
-                    while True:
-                        for i in range(len(devices)):
-                            print(f"{i}) {devices[i].properties[key]}")
-                        option = input("Choose an option: ")
-                        if option.isdigit() and 0 <= int(option) <= len(devices) - 1:
-                            device = devices[int(option)]
-                            print("Backupping to " + devices[int(option)].properties[key])
-                            break
-                        else:
-                            print("Invalid option")
+            if len(devices) == 1:
+                device = devices[0]
+            else:
+                error(f"No device starting with '{target_dir}' was found"
+                      if len(devices) == 0 else
+                      f"More than one device labelled '{target_dir}' was found\nDisconnect one or change its label")
 
         # get device path to write
-        if type(device.device_node) is not str:
-            error("The device directory couldn't be found")
-        mounter = subprocess.run("udisksctl mount -b " + device.device_node, capture_output=True, text=True)
-        # output is "mounted /dev/... in /path/to/device" if it got mounted, otherwise "...already mounted in `/path/to/device'."
-        target_path = (mounter.stdout[mounter.stdout.find(" at ") + 4:]
-                      if mounter.returncode == 0 else
-                      mounter.stderr[mounter.stderr.find("`") + 1 : -2])
+        bus = pydbus.SystemBus()
+        try:
+            target_path = (bus.get("org.freedesktop.UDisks2", "/org/freedesktop/UDisks2/block_devices/"
+                                  + device.sys_name.replace("/", "_"))
+                           .Filesistem.Mount({}))
+        except Exception as e:
+            error("There was an error while trying to mount the target device:\n" + str(e))
 
     def path_in_target(relative: str)->str:
         return path.join(target_path, relative)
