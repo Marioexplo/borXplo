@@ -1,14 +1,20 @@
-def main() -> None:
-    from main import error, typing, argv, path, HOME
+import typing
+
+print_type = typing.Callable[[str], None]
+def main(phase: print_type, message: print_type, borg_msg: print_type) -> None:
+    from main import error, argv, path, HOME
     import json
     import pyudev
+    import pydbus
     import os
     import subprocess
+    import sys
     from datetime import datetime
     import locale
     from pathspec import PathSpec
 
     # get config_path
+    phase("Retrievieng configuration file")
     if "--config" in argv:
         index = argv.index("--config")
         if len(argv) < index:
@@ -38,6 +44,7 @@ def main() -> None:
         error(f"{key} must be of  type '{typ}'")
 
     # get storage device
+    phase("Searching for target device")
     if "--path" in argv:
         index = argv.index("--path")
         if len(argv) < index:
@@ -56,7 +63,7 @@ def main() -> None:
         else:
             target_label = get_key("target_label", str)
             if target_label is None:
-                error("target_label or target_path must be given to find your device")
+                error("target_label or target_path must be set to find your device")
             devices: list[pyudev.Device] = list()
             key = "ID_FS_LABEL"
             storages = device_database.list_devices(subsystem="block")
@@ -80,13 +87,17 @@ def main() -> None:
                            .Filesistem.Mount({}))
         except Exception as e:
             error("There was an error while trying to mount the target device:\n" + str(e))
+    message("Target device configured")
 
     def path_in_target(relative: str)->str:
         return path.join(target_path, relative)
 
+    phase("Preparing for the back up process")
     target_directory = get_key("directory", str)
     if target_directory is not None:
         target_path = path_in_target(target_directory)
+        if not path.isdir(target_path):
+            error(target_directory + " was not a directory inside the target")
 
     # prepare environment
     env = os.environ.copy()
@@ -100,9 +111,11 @@ def main() -> None:
     if argv[1] != "automatic" if progress is None else progress:
         borg_command.append("--progress")
     def borg(args: list[str])->None|typing.Never:
-        process = subprocess.run(borg_command + args, env=env)
+        process = subprocess.run(borg_command + args, env=env, capture_output=True, text=True)
         if process.returncode != 0:
-            error("Borg exited with error", process.returncode)
+            borg_msg(process.stderr + "\n\nBorg exited with error")
+            sys.exit(process.returncode)
+        borg_msg(process.stdout)
 
     # configure repo
     repo_path = path_in_target("repo")
@@ -208,10 +221,12 @@ def main() -> None:
                 args += ["-e", pattern]
 
         borg(borg_backup + args)
+        message(f"Backup number {backup_n} completed")
         backup_n += 1
 
     repos = get_key("repos", list)
     if repos:
+        phase("Backing up...")
         for repo in repos:
             if type(repo) is not dict:
                 error(f"Repo number {repos.index(repo) + 1} is not a dictionary")
@@ -225,6 +240,7 @@ def main() -> None:
             f.write(str(gits))
     except OSError as e:
         error("This error was raised while trying to write on the repo's git_directories file: " + str(e))
+    message("Back up completed")
 
     # compact repo
     max_archives = get_key("max_archives", int)
@@ -233,5 +249,9 @@ def main() -> None:
                                          capture_output=True, text=True, env=env
                                          ).stdout.count("\n")
         if archives_number > max_archives:
+            phase("Compacting repository")
             borg(["delete", repo_path, "--first", str(archives_number - max_archives)])
             borg(["compact", repo_path])
+
+    phase("")
+    message("Your files have been successfully backed up")

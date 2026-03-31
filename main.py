@@ -3,9 +3,9 @@ from sys import _MEIPASS as APP_FILES # pyright: ignore
 import typing
 from os import path, remove
 
-def error(message: str, exitcode: int = 1)->typing.Never:
+def error(message: str)->typing.Never:
     print(message)
-    exit(exitcode)
+    exit(1)
 
 HOME = path.expanduser("~")
 if len(argv) == 1:
