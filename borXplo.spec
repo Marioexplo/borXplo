@@ -2,10 +2,10 @@
 
 
 a = Analysis(
-    ['backup.py'],
+    ['main.py'],
     pathex=[],
     binaries=[],
-    datas=[],
+    datas=["config.guide.txt", "help.txt", "automatic.desktop"],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
@@ -22,7 +22,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='borXplo',
+    name='borxplo',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

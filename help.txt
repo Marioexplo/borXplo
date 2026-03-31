@@ -1,0 +1,16 @@
+Usage: borxplo [--path PATH] [--config PATH]
+    Back up your data reading the options in ~/.config/borXplo/config.json
+    The following options work only per execution
+
+    --path                  overrides the path of the repositoy for the files already backed up
+    --config                overrides the path of the configuration file
+
+
+Usage: borxplo COMMAND
+    COMMAND can be one of the following options:
+
+        help                shows this message
+        guide               shows a guide of the configuration file
+        automatic N         enables the option to automatically update every N days when the system powers on
+                            if N is less than 1, the options is deactivated
+        check               checks if it's time to back up. This command is used by the 'automatic' option
