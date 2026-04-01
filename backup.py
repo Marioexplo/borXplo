@@ -1,8 +1,7 @@
 import typing
 
-print_type = typing.Callable[[str], None]
-def main(phase: print_type, message: print_type, borg_msg: print_type, error: typing.Callable[[str], typing.Never]) -> None:
-    from main import argv, path, HOME
+def main(gui: bool) -> None:
+    from main import argv, path, HOME, CONFIG
     import json
     import pyudev
     import pydbus
@@ -12,6 +11,23 @@ def main(phase: print_type, message: print_type, borg_msg: print_type, error: ty
     from datetime import datetime
     import locale
     from pathspec import PathSpec
+    from last_backup import update_last
+
+    if gui:
+        import gui as _gui
+        phase = _gui.set_action
+        message = _gui.set_message
+        borg_msg = _gui.set_borg
+        def error(text: str) -> typing.Never:
+            message(text)
+            exit()
+    else:
+        from main import error
+        def printer(text: str) -> None:
+            print(text, end="\n\n")
+        phase = printer
+        message = printer
+        borg_msg = printer
 
     # get config_path
     phase("Retrievieng configuration file")
@@ -92,7 +108,7 @@ def main(phase: print_type, message: print_type, borg_msg: print_type, error: ty
     def path_in_target(relative: str)->str:
         return path.join(target_path, relative)
 
-    phase("Preparing for the back up process")
+    phase("Preparing for the backup process")
     target_directory = get_key("directory", str)
     if target_directory is not None:
         target_path = path_in_target(target_directory)
@@ -108,14 +124,26 @@ def main(phase: print_type, message: print_type, borg_msg: print_type, error: ty
     # borg helper
     borg_command = ["borg"]
     progress = get_key("progress", bool)
-    if argv[1] != "automatic" if progress is None else progress:
+    if progress:
         borg_command.append("--progress")
-    def borg(args: list[str])->None|typing.Never:
-        process = subprocess.run(borg_command + args, env=env, capture_output=True, text=True)
-        if process.returncode != 0:
-            borg_msg(process.stderr + "\n\nBorg exited with error")
-            sys.exit(process.returncode)
-        borg_msg(process.stdout)
+    def check_exit(returncode: int) -> None | typing.Never:
+        if returncode != 0:
+            message("\nBorg exited with error")
+            sys.exit(returncode)
+    if gui:
+        def borg(args: list[str])->None|typing.Never:
+            process = subprocess.Popen(
+                borg_command + args,
+                env=env,
+                stderr=subprocess.PIPE,
+                text=True)
+            for current_output in process.stderr: # pyright: ignore
+                borg_msg(current_output)
+            check_exit(process.wait())
+    else:
+        def borg(args: list[str])->None|typing.Never:
+            process = subprocess.run(borg_command + args, env=env)
+            check_exit(process.returncode)
 
     # configure repo
     repo_path = path_in_target("repo")

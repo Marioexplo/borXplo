@@ -3,8 +3,8 @@ from sys import _MEIPASS as APP_FILES # pyright: ignore
 import typing
 from os import path, remove
 
-def error(message: str)->typing.Never:
-    print(message)
+def error(text: str)->typing.Never:
+    print(text)
     exit(1)
 
 def gui() -> None:
@@ -12,11 +12,7 @@ def gui() -> None:
     import gui
     from threading import Thread
 
-    def thread_error(message: str) -> typing.Never:
-        gui.set_message(message)
-        exit()
-    Thread(target=backup.main, args=[gui.set_action, gui.set_message, gui.set_borg, thread_error])
-
+    Thread(target=backup.main, args=[True])
     gui.main()
     exit()
 
@@ -30,7 +26,7 @@ if len(argv) == 1 or argv[1][:2] == "--":
     if "--gui" in argv:
         gui()
     else:
-        backup.main(printer, printer, printer, error)
+        backup.main(False)
         exit()
 
 APP_FILES: str
