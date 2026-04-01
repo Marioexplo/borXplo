@@ -21,7 +21,7 @@ def main(phase: print_type, message: print_type, borg_msg: print_type, error: ty
             error("No config file path was given after '--config'!")
         config_path = argv[index - 1]
     else:
-        config_path = path.join(HOME, ".config/borXplo/config.json")
+        config_path = path.join(CONFIG, "config.json")
 
     # get config
     seek_help = "\nUse \"borxplo guide\" to get help creating a config file"
@@ -182,7 +182,7 @@ def main(phase: print_type, message: print_type, borg_msg: print_type, error: ty
         # get path
         if not get_repo_key("path", str):
             error("A 'path' value must be defined for each archive")
-        repo_path = path.join(repo["path"])
+        repo_path = path.join(HOME, repo["path"])
 
         # directories feature
         if check_list("directories"):
@@ -240,7 +240,7 @@ def main(phase: print_type, message: print_type, borg_msg: print_type, error: ty
             f.write(str(gits))
     except OSError as e:
         error("This error was raised while trying to write on the repo's git_directories file: " + str(e))
-    message("Back up completed")
+    message("Backup completed")
 
     # compact repo
     max_archives = get_key("max_archives", int)
@@ -253,5 +253,6 @@ def main(phase: print_type, message: print_type, borg_msg: print_type, error: ty
             borg(["delete", repo_path, "--first", str(archives_number - max_archives)])
             borg(["compact", repo_path])
 
+    update_last()
     phase("")
     message("Your files have been successfully backed up")

@@ -21,6 +21,7 @@ def gui() -> None:
     exit()
 
 HOME = path.expanduser("~")
+CONFIG = path.join(HOME, ".config/borXplo")
 if len(argv) == 1 or argv[1][:2] == "--":
     import backup
     def printer(text: str) -> None:
@@ -52,7 +53,7 @@ match argv[1]:
                       open(AUTOSTART, "w") as w):
                     w.write(r.read())
             try:
-                with open(path.join(HOME, ".config/borXplo/automatic"), "w") as f:
+                with open(path.join(CONFIG, "automatic"), "w") as f:
                     f.write(n_str)
             except OSError as e:
                 error(f"While trying to write into .config/borXplo/automatic, this error was raised: {e}")
@@ -61,3 +62,6 @@ match argv[1]:
                 remove(AUTOSTART)
             else:
                 error(AUTOSTART + " was not expected to be a directory")
+    case "check":
+        import check
+        check.main()
