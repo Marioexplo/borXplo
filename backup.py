@@ -1,8 +1,8 @@
 import typing
 
 print_type = typing.Callable[[str], None]
-def main(phase: print_type, message: print_type, borg_msg: print_type) -> None:
-    from main import error, argv, path, HOME
+def main(phase: print_type, message: print_type, borg_msg: print_type, error: typing.Callable[[str], typing.Never]) -> None:
+    from main import argv, path, HOME
     import json
     import pyudev
     import pydbus

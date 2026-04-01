@@ -7,11 +7,30 @@ def error(message: str)->typing.Never:
     print(message)
     exit(1)
 
-HOME = path.expanduser("~")
-if len(argv) == 1:
+def gui() -> None:
     import backup
-    backup.main()
+    import gui
+    from threading import Thread
+
+    def thread_error(message: str) -> typing.Never:
+        gui.set_message(message)
+        exit()
+    Thread(target=backup.main, args=[gui.set_action, gui.set_message, gui.set_borg, thread_error])
+
+    gui.main()
     exit()
+
+HOME = path.expanduser("~")
+if len(argv) == 1 or argv[1][:2] == "--":
+    import backup
+    def printer(text: str) -> None:
+        print(text)
+        print()
+    if "--gui" in argv:
+        gui()
+    else:
+        backup.main(printer, printer, printer, error)
+        exit()
 
 APP_FILES: str
 match argv[1]:
