@@ -1,10 +1,9 @@
 def main() -> None:
     import datetime
-    from main import path, error, gui, CONFIG
+    from main import path, error, gui, CONFIG, read
     from last_backup import LAST_BACKUP, DATE_FORMAT, update_last
 
-    with open(LAST_BACKUP) as f:
-        last_backup = f.read()
+    last_backup = read(LAST_BACKUP)
     try:
         last_backup = datetime.datetime.strptime(last_backup, DATE_FORMAT).date()
     except ValueError:
@@ -12,8 +11,7 @@ def main() -> None:
         error("It was not possible to parse the saved date of last backup\nThe file was overwritten with today's date")
     else:
         try:
-            with open(path.join(CONFIG, "automatic")) as f:
-                delta = int(f.read())
+            delta = int(read(path.join(CONFIG, "automatic")))
         except ValueError:
             error("""It was not possible to parse the amount of days for the automatic backup execution
 Use 'borxplo automatic' to set it again""")

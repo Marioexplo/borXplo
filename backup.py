@@ -1,7 +1,9 @@
 import typing
 
+can_exit = True
 def main(gui: bool) -> None:
-    from main import argv, path, HOME, CONFIG
+    global can_exit
+    from main import argv, path, HOME, CONFIG, error, read, write
     import json
     import pyudev
     import pydbus
@@ -13,21 +15,40 @@ def main(gui: bool) -> None:
     from pathspec import PathSpec
     from last_backup import update_last
 
+    # backupper-gui/cli communications functions
     if gui:
         import gui as _gui
         phase = _gui.set_action
         message = _gui.set_message
         borg_msg = _gui.set_borg
-        def error(text: str) -> typing.Never:
-            message(text)
-            exit()
+
+        def shall_exit() -> None | typing.Never:
+            """Shall I exit? If not, I can_exit"""
+            global can_exit
+            if can_exit:
+                exit()
+            can_exit = True
+        def read(path: str) -> str | typing.Never:
+            global can_exit
+            from main import read
+            can_exit = False
+            ret = read(path)
+            shall_exit()
+            return ret
+        def write(path: str, text: str) -> None | typing.Never:
+            global can_exit
+            from main import write
+            can_exit = False
+            write(path, text)
+            shall_exit()
     else:
-        from main import error
         def printer(text: str) -> None:
             print(text, end="\n\n")
         phase = printer
         message = printer
         borg_msg = printer
+
+        from main import read, write
 
     # get config_path
     phase("Retrievieng configuration file")
@@ -40,16 +61,13 @@ def main(gui: bool) -> None:
         config_path = path.join(CONFIG, "config.json")
 
     # get config
-    seek_help = "\nUse \"borxplo guide\" to get help creating a config file"
+    SEEK_HELP = "\nUse \"borxplo guide\" to get help creating a config file"
     try:
-        with open(config_path) as f:
-            config = json.load(f)
-    except OSError as e:
-        error(f"While trying to read {config_path}, this error was raised: {e}{seek_help}")
+        config = json.loads(read(config_path))
     except json.JSONDecodeError as e:
-        error("JSON decoder exited with error: " + e.msg + seek_help)
+        error("JSON decoder exited with error: " + e.msg + SEEK_HELP)
     if type(config) is not dict:
-        error("borXplo.json was not a json object!" + seek_help)
+        error("borXplo.json was not a json object!" + SEEK_HELP)
 
     T = typing.TypeVar("T")
     def get_key(key: str, typ: typing.Type[T], d: dict = config) -> T | None | typing.Never:
@@ -132,6 +150,8 @@ def main(gui: bool) -> None:
             sys.exit(returncode)
     if gui:
         def borg(args: list[str])->None|typing.Never:
+            global can_exit
+            can_exit = False
             process = subprocess.Popen(
                 borg_command + args,
                 env=env,
@@ -140,6 +160,7 @@ def main(gui: bool) -> None:
             for current_output in process.stderr: # pyright: ignore
                 borg_msg(current_output)
             check_exit(process.wait())
+            shall_exit()
     else:
         def borg(args: list[str])->None|typing.Never:
             process = subprocess.run(borg_command + args, env=env)
@@ -151,23 +172,16 @@ def main(gui: bool) -> None:
     quota_exists = quota is not None
     quota_config = path_in_target("quota")
     def set_repo_quota() -> None | typing.Never:
-        try:
-            with open(quota_config, "w") as f:
-                f.write(str(quota))
-        except OSError as e:
-            error("This error was raised while trying to write in the repo's quota file: " + str(e))
+        write(quota_config, str( quota))
     if path.exists(repo_path):
         borg(["check", repo_path])
 
         repo_quota = None
         if path.exists(quota_config):
             try:
-                with open(quota_config) as f:
-                    repo_quota = float(f.read())
+                repo_quota = float(read(quota_config))
             except ValueError:
                 print("The repo's quota file held a value that could not be parsed")
-            except OSError as e:
-                error("This error was raised while trying to read the repo's quota file: " + str(e))
         def change_quota(quota)->None:
             borg(["config", repo_path, "storage_quota", f"{quota}G"])
         if quota_exists:
@@ -263,11 +277,7 @@ def main(gui: bool) -> None:
     else:
         error("'repos' must be set to backup your repositories")
     # git directories
-    try:
-        with open(path_in_target("git_directories"), "w") as f:
-            f.write(str(gits))
-    except OSError as e:
-        error("This error was raised while trying to write on the repo's git_directories file: " + str(e))
+    write(path_in_target("git_directories"), str(gits),)
     message("Backup completed")
 
     # compact repo

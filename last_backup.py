@@ -1,9 +1,8 @@
-from main import CONFIG, path
+from main import CONFIG, path, write
 
 LAST_BACKUP = path.join(CONFIG, "last_backup")
 DATE_FORMAT = "%Y.%m.%d"
 
 def update_last() -> None:
     from datetime import date
-    with open(path.join(CONFIG, "last_backup"), "w") as f:
-        f.write(date.today().strftime(DATE_FORMAT))
+    write(path.join(CONFIG, "last_backup"), date.today().strftime(DATE_FORMAT))

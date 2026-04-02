@@ -3,14 +3,34 @@ from sys import _MEIPASS as APP_FILES # pyright: ignore
 import typing
 from os import path, remove
 
-def error(text: str)->typing.Never:
+def _error(text: str)->typing.Never:
     print(text)
     exit(1)
+error: typing.Callable[[str], typing.Never] = _error
+
+def read(path: str) -> str | typing.Never:
+    try:
+        with open(path) as f:
+            return f.read()
+    except OSError as e:
+        error(f"It was not possible to read into {path}: {e}")
+def write(path: str, text: str) -> None | typing.Never:
+    try:
+        with open(path, "w") as f:
+            f.write(text)
+    except OSError as e:
+        error(f"It was not possible to write into {path}: {e}")
 
 def gui() -> None:
     import backup
     import gui
     from threading import Thread
+
+    global error
+    def _error(text: str) -> typing.Never:
+        gui.set_message(text)
+        exit()
+    error = _error
 
     Thread(target=backup.main, args=[True])
     gui.main()
