@@ -281,3 +281,6 @@ def main(gui: bool) -> None:
     update_last()
     phase("")
     message("Your files have been successfully backed up")
+
+    if gui:
+        _gui.can_close() # pyright: ignore

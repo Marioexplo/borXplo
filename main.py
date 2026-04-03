@@ -32,8 +32,9 @@ def gui() -> None:
         exit()
     error = _error
 
-    Thread(target=backup.main, args=[True]).start()
-    gui.main()
+    thread = Thread(target=backup.main, args=[True])
+    thread.start()
+    gui.main(thread)
     exit()
 
 HOME = path.expanduser("~")

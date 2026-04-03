@@ -1,11 +1,13 @@
+import threading
 from tkinter import ttk
 _action: ttk.Label
 _message: ttk.Label
 _borg: ttk.Label
 
-def main() -> None:
+def main(backupper: threading.Thread) -> None:
     import tkinter as tk
-    global _action, _message, _borg
+    import typing
+    global _action, _message, _borg, can_close
 
     root = tk.Tk(className="borXplo")
     root.resizable(False, False)
@@ -26,6 +28,41 @@ def main() -> None:
     _action = section("Current action:", ("Adwaita Sans", 14), False)
     _message = section("borXplo message:", ("Adwaita Sans", 14), False)
     _borg = section("Borg message:", ("Adwaita Mono", 10), True)
+
+    def quit() -> None | typing.Never:
+        dial = tk.Toplevel()
+        dial.grab_set()
+
+        frame = ttk.Frame(dial, padding=10)
+        frame.pack()
+
+        ttk.Label(frame, text="Are you sure you want to stop the backup process?", font=("Adwaita Sans, Bold", 14))
+
+        btn_frame = ttk.Frame(frame)
+        btn_frame.pack()
+
+        def exit() -> None:
+            import backup
+            backup.must_exit = True
+
+            root.config(cursor="watch")
+            dial.destroy()
+            backupper.join()
+            root.config(cursor="arrow")
+            root.destroy()
+
+        ttk.Button(btn_frame, text="Yes", command=exit).pack(anchor="center", side="left", padx=5)
+        ttk.Button(btn_frame, text="Cancel", command=dial.destroy).pack(anchor="center", side="right", padx=5)
+
+        dial.wait_window()
+
+    button = ttk.Button(frame, padding=20, text="Quit", command=quit)
+    root.protocol("WM_DELETE_WINDOW", quit)
+
+    def _can_close() -> None:
+        button.config(text="Close", command=root.destroy)
+        root.protocol("WM_DELETE_WINDOW", root.destroy)
+    can_close = _can_close
 
     root.mainloop()
 
