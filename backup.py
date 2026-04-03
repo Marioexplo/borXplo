@@ -1,8 +1,7 @@
 import typing
 
-can_exit = True
+must_exit = False
 def main(gui: bool) -> None:
-    global can_exit
     from main import argv, path, HOME, CONFIG, error, read, write
     import json
     import pyudev
@@ -18,37 +17,24 @@ def main(gui: bool) -> None:
     # backupper-gui/cli communications functions
     if gui:
         import gui as _gui
-        phase = _gui.set_action
-        message = _gui.set_message
+        def phase(text: str) -> None | typing.Never:
+            _gui.set_action(text)
+            shall_exit()
+        def message(text: str) -> None | typing.Never:
+            _gui.set_message(text)
+            shall_exit()
         borg_msg = _gui.set_borg
 
         def shall_exit() -> None | typing.Never:
             """Shall I exit? If not, I can_exit"""
-            global can_exit
-            if can_exit:
+            if must_exit:
                 exit()
-            can_exit = True
-        def read(path: str) -> str | typing.Never:
-            global can_exit
-            from main import read
-            can_exit = False
-            ret = read(path)
-            shall_exit()
-            return ret
-        def write(path: str, text: str) -> None | typing.Never:
-            global can_exit
-            from main import write
-            can_exit = False
-            write(path, text)
-            shall_exit()
     else:
         def printer(text: str) -> None:
             print(text, end="\n\n")
         phase = printer
         message = printer
         borg_msg = printer
-
-        from main import read, write
 
     # get config_path
     phase("Retrievieng configuration file")
@@ -150,8 +136,6 @@ def main(gui: bool) -> None:
             sys.exit(returncode)
     if gui:
         def borg(args: list[str])->None|typing.Never:
-            global can_exit
-            can_exit = False
             process = subprocess.Popen(
                 borg_command + args,
                 env=env,
@@ -167,6 +151,7 @@ def main(gui: bool) -> None:
             check_exit(process.returncode)
 
     # configure repo
+    phase("Configuring backup repository")
     repo_path = path_in_target("repo")
     quota = get_key("quota", float)
     quota_exists = quota is not None
@@ -184,6 +169,7 @@ def main(gui: bool) -> None:
                 print("The repo's quota file held a value that could not be parsed")
         def change_quota(quota)->None:
             borg(["config", repo_path, "storage_quota", f"{quota}G"])
+            message("New repository quota set")
         if quota_exists:
             if not repo_quota or quota != repo_quota:
                 change_quota(quota)
@@ -191,16 +177,17 @@ def main(gui: bool) -> None:
         elif repo_quota:
             change_quota(0)
             os.remove(quota_config)
+        message("Repository configured")
     else:
         initializer = ["init", "-e", "none", repo_path]
         if quota_exists:
             initializer += ["--storage-quota", f"{quota}G"]
             set_repo_quota()
         borg(initializer)
+        message("Repository initialized")
 
-    borg_backup = list()
     compression = get_key("compression", str)
-    borg_backup += ["create", "-C", "lz4" if compression is None else compression]
+    borg_backup = ["create", "-C", "lz4" if compression is None else compression]
     if get_key("stats", bool):
         borg_backup.append("-s")
     locale.setlocale(locale.LC_TIME, "")
@@ -277,7 +264,7 @@ def main(gui: bool) -> None:
     else:
         error("'repos' must be set to backup your repositories")
     # git directories
-    write(path_in_target("git_directories"), str(gits),)
+    write(path_in_target("git_directories"), str(gits))
     message("Backup completed")
 
     # compact repo

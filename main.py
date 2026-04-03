@@ -32,7 +32,7 @@ def gui() -> None:
         exit()
     error = _error
 
-    Thread(target=backup.main, args=[True])
+    Thread(target=backup.main, args=[True]).start()
     gui.main()
     exit()
 
@@ -65,14 +65,9 @@ match argv[1]:
         AUTOSTART = path.join(HOME, ".config/autostart/borxplo.desktop")
         if n > 0:
             if not path.exists(AUTOSTART):
-                with (open(path.join(APP_FILES, "automatic.desktop")) as r,
-                      open(AUTOSTART, "w") as w):
-                    w.write(r.read())
-            try:
-                with open(path.join(CONFIG, "automatic"), "w") as f:
-                    f.write(n_str)
-            except OSError as e:
-                error(f"While trying to write into .config/borXplo/automatic, this error was raised: {e}")
+                with open(path.join(APP_FILES, "automatic.desktop")) as f:
+                    write(AUTOSTART, f.read())
+            write(path.join(CONFIG, "automatic"), n_str)
         elif path.exists(AUTOSTART):
             if path.isfile(AUTOSTART):
                 remove(AUTOSTART)
