@@ -5,7 +5,6 @@ def main(gui: bool) -> None:
     from main import argv, path, HOME, CONFIG, error, read, write
     import json
     import pyudev
-    import pydbus
     import os
     import subprocess
     import sys
@@ -100,13 +99,14 @@ def main(gui: bool) -> None:
                       f"More than one device labelled '{target_dir}' was found\nDisconnect one or change its label")
 
         # get device path to write
-        bus = pydbus.SystemBus()
-        try:
-            target_path = (bus.get("org.freedesktop.UDisks2", "/org/freedesktop/UDisks2/block_devices/"
-                                  + device.sys_name.replace("/", "_"))
-                           .Filesistem.Mount({}))
-        except Exception as e:
-            error("There was an error while trying to mount the target device:\n" + str(e))
+        if type(device.device_node) is not str:
+            error("The device directory couldn't be found")
+        subprocess.run(["udisksctl", "mount", "-b", device.device_node], capture_output=True)
+        for line in read("/proc/self/mounts"):
+            parts = line.split()
+            if parts[0] == device.device_node:
+                target_path = parts[1]
+                break
     message("Target device configured")
 
     def path_in_target(relative: str)->str:
