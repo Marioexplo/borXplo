@@ -4,7 +4,7 @@ Usage: borxplo [--path PATH] [--config PATH]
 
     --path                  overrides the path of the repositoy for the files already backed up
     --config                overrides the path of the configuration file
-
+    --gui                   open with GUI
 
 Usage: borxplo COMMAND
     COMMAND can be one of the following options:
