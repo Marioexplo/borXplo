@@ -19,23 +19,23 @@ def main() -> None:
     main.error = _error
 
     root = tk.Tk(className="borXplo")
-    root.minsize(480, 480)
+    root.minsize(480, 960)
 
     frame = ttk.Frame(root)
     frame.pack(fill="both", expand=True)
 
-    def section(header: str, font: tuple[str, int]) -> ttk.Label:
+    def section(header: str, font: tuple[str, int], fill: typing.Literal["both", "y"]) -> ttk.Label:
         """Set section header's text and label's font and wether tkinter can automatically change its size."""
         new_frame = ttk.Frame(frame, padding=20)
         new_frame.pack(fill="both", expand=True)
         ttk.Label(new_frame, text=header, font=("Adwaita Sans, Bold", 14)).pack(anchor="n")
         label = ttk.Label(new_frame, background="#cccccc", font=font)
-        label.pack(side="bottom", fill="both", expand=True)
+        label.pack(side="bottom", fill=fill, expand=True)
         return label
 
-    _action = section("Current action:", ("Adwaita Sans", 14))
-    _message = section("borXplo message:", ("Adwaita Sans", 14))
-    _borg = section("Borg message:", ("Adwaita Mono", 10))
+    _action = section("Current action:", ("Adwaita Sans", 14), "y")
+    _message = section("borXplo message:", ("Adwaita Sans", 14), "y")
+    _borg = section("Borg message:", ("Adwaita Mono", 10), "both")
 
     backupper = Thread(target=backup.main, args=[True])
 
