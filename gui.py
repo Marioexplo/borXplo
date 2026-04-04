@@ -1,13 +1,22 @@
-import threading
 from tkinter import ttk
 _action: ttk.Label
 _message: ttk.Label
 _borg: ttk.Label
 
-def main(backupper: threading.Thread) -> None:
+def main() -> None:
+    global _action, _message, _borg, can_close
     import tkinter as tk
     import typing
-    global _action, _message, _borg, can_close
+    import main
+    import backup
+    import gui
+    from threading import Thread
+    from sys import exit
+
+    def _error(text: str) -> typing.Never:
+        gui.set_message(text)
+        exit()
+    main.error = _error
 
     root = tk.Tk(className="borXplo")
     root.minsize(480, 480)
@@ -27,6 +36,8 @@ def main(backupper: threading.Thread) -> None:
     _action = section("Current action:", ("Adwaita Sans", 14))
     _message = section("borXplo message:", ("Adwaita Sans", 14))
     _borg = section("Borg message:", ("Adwaita Mono", 10))
+
+    backupper = Thread(target=backup.main, args=[True])
 
     def quit() -> None | typing.Never:
         dial = tk.Toplevel()
@@ -64,7 +75,9 @@ def main(backupper: threading.Thread) -> None:
         root.protocol("WM_DELETE_WINDOW", root.destroy)
     can_close = _can_close
 
+    backupper.start()
     root.mainloop()
+    exit()
 
 def _set_text(label: ttk.Label, text: str) -> None:
     label.config(text=text)

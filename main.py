@@ -21,22 +21,6 @@ def write(path: str, text: str) -> None | typing.Never:
     except OSError as e:
         error(f"It was not possible to write into {path}: {e}")
 
-def gui() -> None:
-    import backup
-    import gui
-    from threading import Thread
-
-    global error
-    def _error(text: str) -> typing.Never:
-        gui.set_message(text)
-        exit()
-    error = _error
-
-    thread = Thread(target=backup.main, args=[True])
-    thread.start()
-    gui.main(thread)
-    exit()
-
 HOME = path.expanduser("~")
 CONFIG = path.join(HOME, ".config/borXplo")
 if __name__ == "__main__":

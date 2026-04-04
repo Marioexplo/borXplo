@@ -1,7 +1,8 @@
 def main() -> None:
     import datetime
-    from main import path, error, gui, CONFIG, read
+    from main import path, error, CONFIG, read
     from last_backup import LAST_BACKUP, DATE_FORMAT, update_last
+    import gui
 
     last_backup = read(LAST_BACKUP)
     try:
@@ -16,4 +17,4 @@ def main() -> None:
             error("""It was not possible to parse the amount of days for the automatic backup execution
 Use 'borxplo automatic' to set it again""")
         if delta >= (datetime.date.today() - last_backup).days:
-            gui()
+            gui.main()
