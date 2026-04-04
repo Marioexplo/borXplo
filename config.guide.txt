@@ -1,4 +1,4 @@
-By default, you give informations to borXplo about what you want to back up in a file in HOME/.config/borXplo.json .
+By default, you give informations to borXplo about what you want to back up in ~/.config/borXplo/config.json .
 The configuration file always has to be formatted in the JSON language.
 Here are the values presented as parsed for Python and explained:
 
@@ -11,6 +11,7 @@ progress: bool = True       # wether to show progress
 stats: bool = False         # wether to show statistics
 compression: str            # execute 'borg help compression' for details
 max_archives: int           # when number of archives passes this limit, they repository is compacted
+unmount: bool = False       # wether to unmount the target when the backup process has finished
 repos: list[dict]           # which of your repositories to back up (see below)
 
 Repo:
@@ -43,4 +44,5 @@ Here's an example:
             ]
         }
     ]
+    "unmount": true
 }

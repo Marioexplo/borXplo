@@ -1,7 +1,6 @@
 import typing
 
-must_exit = False
-def main(gui: bool) -> None:
+def main() -> None:
     from main import argv, path, HOME, CONFIG, error, read, write
     import json
     import pyudev
@@ -13,30 +12,8 @@ def main(gui: bool) -> None:
     from pathspec import PathSpec
     from last_backup import update_last
 
-    # backupper-gui/cli communications functions
-    if gui:
-        import gui as _gui
-        def phase(text: str) -> None | typing.Never:
-            _gui.set_action(text)
-            shall_exit()
-        def message(text: str) -> None | typing.Never:
-            _gui.set_message(text)
-            shall_exit()
-        borg_msg = _gui.set_borg
-
-        def shall_exit() -> None | typing.Never:
-            """Shall I exit? If not, I can_exit"""
-            if must_exit:
-                exit()
-    else:
-        def printer(text: str) -> None:
-            print(text, end="\n\n")
-        phase = printer
-        message = printer
-        borg_msg = printer
-
     # get config_path
-    phase("Retrievieng configuration file")
+    print("Retrievieng configuration file")
     if "--config" in argv:
         index = argv.index("--config")
         if len(argv) < index:
@@ -55,7 +32,7 @@ def main(gui: bool) -> None:
         error("borXplo.json was not a json object!" + SEEK_HELP)
 
     T = typing.TypeVar("T")
-    def get_key(key: str, typ: typing.Type[T], d: dict = config) -> T | None | typing.Never:
+    def option(key: str, typ: typing.Type[T], d: dict = config) -> T | None | typing.Never:
         if key not in d:
             return None
         if type(d[key]) is typ:
@@ -63,7 +40,8 @@ def main(gui: bool) -> None:
         error(f"{key} must be of  type '{typ}'")
 
     # get storage device
-    phase("Searching for target device")
+    print("Searching for target device")
+    device_node: str | None = None
     if "--path" in argv:
         index = argv.index("--path")
         if len(argv) < index:
@@ -71,49 +49,49 @@ def main(gui: bool) -> None:
         target_path = argv[index + 1]
     else:
         device_database = pyudev.Context()
-        target_dir = get_key("target_path", str)
+        target_dir = option("target_path", str)
         if target_dir is not None:
             if path.exists(target_dir):
                 error("target_path doesn't seem to be a real path")
             try:
-                device = pyudev.Devices.from_device_file(device_database, target_dir)
+                device_node = pyudev.Devices.from_device_file(device_database, target_dir).device_node
             except pyudev.DeviceNotFoundError:
                 error("No device was found at " + target_dir)
         else:
-            target_label = get_key("target_label", str)
+            target_label = option("target_label", str)
             if target_label is None:
                 error("target_label or target_path must be set to find your device")
             devices: list[pyudev.Device] = list()
             key = "ID_FS_LABEL"
             storages = device_database.list_devices(subsystem="block")
-            if get_key("only_usb", bool):
+            if option("only_usb", bool):
                 storages = [i for i in storages if i.find_parent(subsystem="usb")]
-            for device in storages:
-                if key in device.properties and device.properties[key] == target_dir:
-                    devices.append(device)
+            for storage in storages:
+                if key in storage.properties and storage.properties[key] == target_dir:
+                    devices.append(storage)
             if len(devices) == 1:
-                device = devices[0]
+                device_node = devices[0].device_node
             else:
                 error(f"No device starting with '{target_dir}' was found"
                       if len(devices) == 0 else
                       f"More than one device labelled '{target_dir}' was found\nDisconnect one or change its label")
 
         # get device path to write
-        if type(device.device_node) is not str:
+        if type(device_node) is not str:
             error("The device directory couldn't be found")
-        subprocess.run(["udisksctl", "mount", "-b", device.device_node], capture_output=True)
+        subprocess.run(["udisksctl", "mount", "-b", device_node], capture_output=True)
         for line in read("/proc/self/mounts"):
             parts = line.split()
-            if parts[0] == device.device_node:
+            if parts[0] == device_node:
                 target_path = parts[1]
                 break
-    message("Target device configured")
+    print("Target device configured")
 
     def path_in_target(relative: str)->str:
         return path.join(target_path, relative)
 
-    phase("Preparing for the backup process")
-    target_directory = get_key("directory", str)
+    print("Preparing for the backup process")
+    target_directory = option("directory", str)
     if target_directory is not None:
         target_path = path_in_target(target_directory)
         if not path.isdir(target_path):
@@ -127,33 +105,19 @@ def main(gui: bool) -> None:
 
     # borg helper
     borg_command = ["borg"]
-    progress = get_key("progress", bool)
+    progress = option("progress", bool)
     if progress:
         borg_command.append("--progress")
-    def check_exit(returncode: int) -> None | typing.Never:
+    def borg(args: list[str])->None|typing.Never:
+        returncode = subprocess.run(borg_command + args, env=env).returncode
         if returncode != 0:
-            message("\nBorg exited with error")
+            print("Borg exited with error")
             sys.exit(returncode)
-    if gui:
-        def borg(args: list[str])->None|typing.Never:
-            process = subprocess.Popen(
-                borg_command + args,
-                env=env,
-                stderr=subprocess.PIPE,
-                text=True)
-            for current_output in process.stderr: # pyright: ignore
-                borg_msg(current_output)
-            check_exit(process.wait())
-            shall_exit()
-    else:
-        def borg(args: list[str])->None|typing.Never:
-            process = subprocess.run(borg_command + args, env=env)
-            check_exit(process.returncode)
 
     # configure repo
-    phase("Configuring backup repository")
+    print("Configuring backup repository")
     repo_path = path_in_target("repo")
-    quota = get_key("quota", float)
+    quota = option("quota", float)
     quota_exists = quota is not None
     quota_config = path_in_target("quota")
     def set_repo_quota() -> None | typing.Never:
@@ -169,7 +133,7 @@ def main(gui: bool) -> None:
                 print("The repo's quota file held a value that could not be parsed")
         def change_quota(quota)->None:
             borg(["config", repo_path, "storage_quota", f"{quota}G"])
-            message("New repository quota set")
+            print("New repository quota set")
         if quota_exists:
             if not repo_quota or quota != repo_quota:
                 change_quota(quota)
@@ -177,18 +141,18 @@ def main(gui: bool) -> None:
         elif repo_quota:
             change_quota(0)
             os.remove(quota_config)
-        message("Repository configured")
+        print("Repository configured")
     else:
         initializer = ["init", "-e", "none", repo_path]
         if quota_exists:
             initializer += ["--storage-quota", f"{quota}G"]
             set_repo_quota()
         borg(initializer)
-        message("Repository initialized")
+        print("Repository initialized")
 
-    compression = get_key("compression", str)
+    compression = option("compression", str)
     borg_backup = ["create", "-C", "lz4" if compression is None else compression]
-    if get_key("stats", bool):
+    if option("stats", bool):
         borg_backup.append("-s")
     locale.setlocale(locale.LC_TIME, "")
     now = datetime.now()
@@ -199,7 +163,7 @@ def main(gui: bool) -> None:
     def backup(repo: dict[str,typing.Any])->None|typing.Never:
         nonlocal backup_n
         def get_repo_key(key: str, typ: type)->typing.Any|None|typing.Never:
-            return get_key(key, typ, repo)
+            return option(key, typ, repo)
         def check_list(key: str)->list|None|typing.Never:
             lis = get_repo_key(key, list)
             if lis is None:
@@ -250,12 +214,12 @@ def main(gui: bool) -> None:
                 args += ["-e", pattern]
 
         borg(borg_backup + args)
-        message(f"Backup number {backup_n} completed")
+        print(f"Backup number {backup_n} completed")
         backup_n += 1
 
-    repos = get_key("repos", list)
+    repos = option("repos", list)
     if repos:
-        phase("Backing up...")
+        print("Backing up...")
         for repo in repos:
             if type(repo) is not dict:
                 error(f"Repo number {repos.index(repo) + 1} is not a dictionary")
@@ -265,22 +229,42 @@ def main(gui: bool) -> None:
         error("'repos' must be set to backup your repositories")
     # git directories
     write(path_in_target("git_directories"), str(gits))
-    message("Backup completed")
+    print("Backup completed")
 
     # compact repo
-    max_archives = get_key("max_archives", int)
+    max_archives = option("max_archives", int)
     if max_archives is not None:
         archives_number = subprocess.run(["borg", "list", "--short", repo_path],
                                          capture_output=True, text=True, env=env
                                          ).stdout.count("\n")
         if archives_number > max_archives:
-            phase("Compacting repository")
+            print("Compacting repository")
             borg(["delete", repo_path, "--first", str(archives_number - max_archives)])
             borg(["compact", repo_path])
 
     update_last()
-    phase("")
-    message("Your files have been successfully backed up")
+    print("Your files have been successfully backed up")
 
-    if gui:
-        _gui.can_close() # pyright: ignore
+    # automatic unmounting and notifying
+    if device_node:
+        def unmount() -> None:
+            subprocess.run(["udisksctl", "unmount", "-b", device_node], capture_output=True)
+        notify_cmd = ["notify-send",
+            "Backup completed", "borXplo has completed the backup process.",
+            "-a", "borXplo",
+            "-i", "removable-media",
+            "-n", "media-flash"
+        ]
+        if option("unmount", bool):
+            unmount()
+            notify_cmd[2] += "\nThe media can now be removed."
+            subprocess.run(notify_cmd)
+        else:
+            notify_cmd += ["-A", "Unmount media", "-t", "7000"]
+            notify_action = False
+            try:
+                notify_action = subprocess.run(notify_cmd, capture_output=True, text=True).stdout
+            except subprocess.TimeoutExpired:
+                pass
+            if notify_action:
+                unmount()
