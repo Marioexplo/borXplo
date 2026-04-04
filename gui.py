@@ -10,24 +10,23 @@ def main(backupper: threading.Thread) -> None:
     global _action, _message, _borg, can_close
 
     root = tk.Tk(className="borXplo")
-    root.resizable(False, False)
+    root.minsize(480, 480)
 
     frame = ttk.Frame(root)
-    frame.pack()
+    frame.pack(fill="both", expand=True)
 
-    def section(header: str, font: tuple[str, int], propagate: bool) -> ttk.Label:
+    def section(header: str, font: tuple[str, int]) -> ttk.Label:
         """Set section header's text and label's font and wether tkinter can automatically change its size."""
         new_frame = ttk.Frame(frame, padding=20)
-        new_frame.pack()
-        ttk.Label(new_frame, text=header, font=("Adwaita Sans, Bold", 14)).pack(anchor="nw")
-        label = ttk.Label(new_frame, background="#cccccc", font=font, width=25)
-        label.pack(side="bottom")
-        label.pack_propagate(propagate)
+        new_frame.pack(fill="both", expand=True)
+        ttk.Label(new_frame, text=header, font=("Adwaita Sans, Bold", 14)).pack(anchor="n")
+        label = ttk.Label(new_frame, background="#cccccc", font=font)
+        label.pack(side="bottom", fill="both", expand=True)
         return label
 
-    _action = section("Current action:", ("Adwaita Sans", 14), False)
-    _message = section("borXplo message:", ("Adwaita Sans", 14), False)
-    _borg = section("Borg message:", ("Adwaita Mono", 10), True)
+    _action = section("Current action:", ("Adwaita Sans", 14))
+    _message = section("borXplo message:", ("Adwaita Sans", 14))
+    _borg = section("Borg message:", ("Adwaita Mono", 10))
 
     def quit() -> None | typing.Never:
         dial = tk.Toplevel()
@@ -36,7 +35,7 @@ def main(backupper: threading.Thread) -> None:
         frame = ttk.Frame(dial, padding=10)
         frame.pack()
 
-        ttk.Label(frame, text="Are you sure you want to stop the backup process?", font=("Adwaita Sans, Bold", 14))
+        ttk.Label(frame, text="Are you sure you want to stop the backup process?", font=("Adwaita Sans, Bold", 14)).pack()
 
         btn_frame = ttk.Frame(frame)
         btn_frame.pack()
@@ -57,8 +56,9 @@ def main(backupper: threading.Thread) -> None:
         dial.wait_window()
 
     button = ttk.Button(frame, padding=20, text="Quit", command=quit)
-    root.protocol("WM_DELETE_WINDOW", quit)
+    button.pack()
 
+    root.protocol("WM_DELETE_WINDOW", quit)
     def _can_close() -> None:
         button.config(text="Close", command=root.destroy)
         root.protocol("WM_DELETE_WINDOW", root.destroy)
