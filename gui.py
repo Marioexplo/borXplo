@@ -8,12 +8,15 @@ def main() -> None:
     frame = ttk.Frame(root)
     frame.pack()
 
-    ttk.Label(frame, text="It's time to back up your data!", font=("Adwaita Sans", 14, "Bold"), padding=10).pack()
+    ttk.Label(frame, text="It's time to back up your data!", font=("Adwaita Sans", 14, "bold"), padding=10).pack()
+
+    btn_frame = ttk.Frame(frame)
+    btn_frame.pack(pady=10)
 
     def start() -> None:
         root.destroy()
         backup.main()
-    ttk.Button(frame, text="Start", command=start, padding=10).pack(anchor="sw")
-    ttk.Button(frame, text="Cancel", command=root.destroy, padding=10).pack(anchor="se")
+    ttk.Button(btn_frame, text="Start", command=start).pack(anchor="center", side="left", padx=10)
+    ttk.Button(btn_frame, text="Cancel", command=root.destroy).pack(anchor="center", side="right", padx=10)
 
     root.mainloop()
