@@ -40,23 +40,22 @@ if __name__ == "__main__":
 
         case "automatic":
             if len(argv) == 2:
-                error("An integer must be given with option 'automatic'")
+                error("The number of days must be given")
+            if len(argv) > 4:
+                error("Too many arguments")
 
-            n_str = argv[2]
+            terminal = 0
+            if len(argv) == 4:
+                if argv[2] == "-t" or argv[2] == "--terminal":
+                    terminal = 1
+                else:
+                    error('Invalid input to enable the terminal option. Only "terminal", "true" and "0" are accepted')
+
+            n_str = argv[2 + terminal]
             try:
                 n = int(n_str)
             except ValueError:
                 error(n_str + " is not an integer")
-
-            terminal = False
-            if len(argv) == 4:
-                if argv[3] in ("0", "true", "terminal"):
-                    terminal = True
-                else:
-                    error('Invalid input to enable the terminal option. Only "terminal", "true" and "0" are accepted')
-
-            if len(argv) > 4:
-                error("Too many arguments")
 
             AUTOSTART = path.join(HOME, ".config/autostart/borxplo.desktop")
             if n > 0:

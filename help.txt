@@ -13,11 +13,10 @@ Usage: borxplo COMMAND
         guide               shows a guide of the configuration file
         check               checks if it's time to back up. This command is used by the 'automatic' option
 
-Usage: borxplo automatic DAYS [TERMINAL]
+Usage: borxplo automatic [-t | --terminal] DAYS
     handles the option to automatically open the GUI when the system powers on
 
     DAYS                    the amount of days after which to rember to back up
                             if it's less than 1, the option is deactivated
-    TERMINAL                can be "terminal" or "true" or "1"
-                            if the option had been enabled and TERMINAL is not given, it disables
-                            print the messages of the backup process to a terminal
+    -t                      print the messages of the backup process to a terminal
+                            if the option had been enabled and it is not given again, it disables
