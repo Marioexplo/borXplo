@@ -11,6 +11,7 @@ def main() -> None:
     import locale
     from pathspec import PathSpec
     from last_backup import update_last
+    import shutil
 
     # get config_path
     print("Retrievieng configuration file")
@@ -50,14 +51,7 @@ def main() -> None:
     else:
         device_database = pyudev.Context()
         target_dir = option("target_path", str)
-        if target_dir is not None:
-            if path.exists(target_dir):
-                error("target_path doesn't seem to be a real path")
-            try:
-                device_node = pyudev.Devices.from_device_file(device_database, target_dir).device_node
-            except pyudev.DeviceNotFoundError:
-                error("No device was found at " + target_dir)
-        else:
+        if target_dir is None:
             target_label = option("target_label", str)
             if target_label is None:
                 error("target_label or target_path must be set to find your device")
@@ -67,20 +61,27 @@ def main() -> None:
             if option("only_usb", bool):
                 storages = [i for i in storages if i.find_parent(subsystem="usb")]
             for storage in storages:
-                if key in storage.properties and storage.properties[key] == target_dir:
+                if key in storage.properties and storage.properties[key] == target_label:
                     devices.append(storage)
             if len(devices) == 1:
                 device_node = devices[0].device_node
             else:
-                error(f"No device starting with '{target_dir}' was found"
+                error(f"No device named '{target_label}' was found"
                       if len(devices) == 0 else
-                      f"More than one device labelled '{target_dir}' was found\nDisconnect one or change its label")
+                      f"More than one device labelled '{target_label}' was found\nDisconnect one or change its label")
+        else:
+            if path.exists(target_dir):
+                error("target_path doesn't seem to be a real path")
+            try:
+                device_node = pyudev.Devices.from_device_file(device_database, target_dir).device_node
+            except pyudev.DeviceNotFoundError:
+                error("No device was found at " + target_dir)
 
         # get device path to write
         if type(device_node) is not str:
             error("The device directory couldn't be found")
-        subprocess.run(["udisksctl", "mount", "-b", device_node], capture_output=True)
-        for line in read("/proc/self/mounts"):
+        subprocess.run(["udisksctl", "mount", "-b", device_node], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        for line in read("/proc/self/mounts").split("\n"):
             parts = line.split()
             if parts[0] == device_node:
                 target_path = parts[1]
@@ -220,6 +221,7 @@ def main() -> None:
                 backup_cmd += ["-e", path.join(repo_path, pattern)]
     for repo in repos:
         backup(repo)
+    print("Backing up...")
     borg(backup_cmd)
     # git directories
     write(path_in_target("git_directories"), str(gits))
@@ -242,23 +244,28 @@ def main() -> None:
     # automatic unmounting and notifying
     if device_node:
         def unmount() -> None:
-            subprocess.run(["udisksctl", "unmount", "-b", device_node], capture_output=True)
-        notify_cmd = ["notify-send",
-            "Backup completed", "borXplo has completed the backup process.",
-            "-a", "borXplo",
-            "-i", "removable-media",
-            "-n", "media-flash"
-        ]
-        if option("unmount", bool):
-            unmount()
-            notify_cmd[2] += "\nThe media can now be removed."
-            subprocess.run(notify_cmd)
-        else:
-            notify_cmd += ["-A", "Unmount media", "-t", "7000"]
-            notify_action = False
-            try:
-                notify_action = subprocess.run(notify_cmd, capture_output=True, text=True).stdout
-            except subprocess.TimeoutExpired:
-                pass
-            if notify_action:
+            subprocess.run(["udisksctl", "unmount", "-b", device_node], stdout=subprocess.DEVNULL)
+            print(f"Device {target_label if target_label else device_node} unmounted") # pyright: ignore[reportPossiblyUnboundVariable]
+        must_unmount = option("unmount", bool)
+        if shutil.which("notify-send"):
+            notify_cmd = ["notify-send",
+                "Backup completed", "borXplo has completed the backup process.",
+                "-a", "borXplo",
+                "-i", "removable-media",
+                "-n", "media-flash"
+            ]
+            if must_unmount:
                 unmount()
+                notify_cmd[2] += "\nThe media can now be removed."
+                subprocess.run(notify_cmd)
+            else:
+                notify_cmd += ["-A", "Unmount media", "-t", "7000"]
+                notify_action = False
+                try:
+                    notify_action = subprocess.run(notify_cmd, capture_output=True, text=True).stdout
+                except subprocess.TimeoutExpired:
+                    pass
+                if notify_action:
+                    unmount()
+        elif must_unmount:
+            unmount()
