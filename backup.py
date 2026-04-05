@@ -50,11 +50,11 @@ def main() -> None:
         target_path = argv[index + 1]
     else:
         device_database = pyudev.Context()
-        target_dir = option("target_path", str)
-        if target_dir is None:
+        target_node = option("target_node", str)
+        if target_node is None:
             target_label = option("target_label", str)
             if target_label is None:
-                error("target_label or target_path must be set to find your device")
+                error("target_label or target_node must be set to find your device")
             devices: list[pyudev.Device] = list()
             key = "ID_FS_LABEL"
             storages = device_database.list_devices(subsystem="block")
@@ -71,9 +71,9 @@ def main() -> None:
                       f"More than one device labelled '{target_label}' was found\nDisconnect one or change its label")
         else:
             try:
-                device_node = pyudev.Devices.from_device_file(device_database, target_dir).device_node
+                device_node = pyudev.Devices.from_device_file(device_database, target_node).device_node
             except pyudev.DeviceNotFoundError:
-                error("No device was found at " + target_dir)
+                error("No device was found at " + target_node)
 
         # get device path to write
         if type(device_node) is not str:

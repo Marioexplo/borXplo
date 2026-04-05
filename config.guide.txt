@@ -4,7 +4,7 @@ Here are the values presented as parsed for Python and explained:
 
 target_label: str           # specifically ID_FS_LABEL for udev. It's usually the name that appears in file managers
 only_usb: bool = False      # wether to consider only USB devices when checking labels
-target_path: str            # as in /dev/... If this option is set, target_label is not considered
+target_node: str            # as in /dev/... If this option is set, target_label is not considered
 directory: str              # the directory inside the device in which to put the repo
 quota: float = ∞            # maximum space occupied by the repo in Gb
 progress: bool = True       # wether to show progress
