@@ -199,9 +199,9 @@ def main() -> None:
             return
 
         include = get_list("include")
-        if include is None:
-            backup_cmd.append(repo_path)
-        else:
+        git = repo_option("git", bool)
+        exclude = get_list("exclude")
+        if include:
             # resolve patterns like git
             spec = PathSpec.from_lines("gitwildmatch", include)
             for root, _, files in os.walk(repo_path):
@@ -210,12 +210,13 @@ def main() -> None:
                     rel_path = path.relpath(full_path, repo_path)
                     if spec.match_file(rel_path):
                         backup_cmd.append(full_path)
-        if repo_option("git", bool):
+        elif exclude or not git:
+            backup_cmd.append(repo_path)
+        if git:
             backup_cmd.append(path.join(repo_path, ".git"))
             gits.append(repo_path)
-        excluded = get_list("exclude")
-        if excluded is not None:
-            for pattern in excluded:
+        if exclude is not None:
+            for pattern in exclude:
                 backup_cmd += ["-e", path.join(repo_path, pattern)]
     for repo in repos:
         backup(repo)
