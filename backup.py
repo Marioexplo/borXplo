@@ -150,38 +150,46 @@ def main() -> None:
         borg(initializer)
         print("Repository initialized")
 
+    # read repos
+    print("Reading repos")
     compression = option("compression", str)
-    borg_backup = ["create", "-C", "lz4" if compression is None else compression]
-    if option("stats", bool):
-        borg_backup.append("-s")
     locale.setlocale(locale.LC_TIME, "")
     now = datetime.now()
-    archive_name = f"{repo_path}::{now.strftime("%x").replace("/", ".")}-{now.strftime("%H.%M.%S")}-"
-    backup_n = 0
+    backup_cmd = ["create", "-C", "lz4" if compression is None else compression]
+    if option("stats", bool):
+        backup_cmd.append("-s")
+    backup_cmd.append(f"{repo_path}::{now.strftime("%x").replace("/", ".")}-{now.strftime("%H.%M.%S")}")
     gits: list[str] = list()
-    """The number of repos already backupped"""
-    def backup(repo: dict[str,typing.Any])->None|typing.Never:
-        nonlocal backup_n
-        def get_repo_key(key: str, typ: type)->typing.Any|None|typing.Never:
+
+    repos = option("repos", list)
+    if not repos:
+        error("'repos' must be set to backup your repositories")
+    def backup(repo)->None|typing.Never:
+        nonlocal backup_cmd
+        if type(repo) is not dict:
+            error(f"Repo number {repos.index(repo) + 1} is not a dictionary")
+
+        def repo_option(key: str, typ: typing.Type[T])->T|None|typing.Never:
             return option(key, typ, repo)
-        def check_list(key: str)->list|None|typing.Never:
-            lis = get_repo_key(key, list)
+        def get_list(key: str)->list[str]|None|typing.Never:
+            lis = repo_option(key, list)
             if lis is None:
                 return None
             if all(type(i) is str for i in lis):
-               return lis
+                return lis
             error(f"An item in a '{key}' list was not of type str")
 
         # get path
-        if not get_repo_key("path", str):
+        repo_path = repo_option("path", str)
+        if not repo_path:
             error("A 'path' value must be defined for each archive")
-        repo_path = path.join(HOME, repo["path"])
+        repo_path = path.join(HOME, repo_path)
 
         # directories feature
-        if check_list("directories"):
-            dirs = repo["directories"]
+        directories = get_list("directories")
+        if directories:
             del repo["directories"]
-            for dir in dirs:
+            for dir in directories:
                 dir = path.join(repo_path, dir)
                 if not path.isdir(dir):
                     error("A path in 'directories' was not a directory")
@@ -190,43 +198,28 @@ def main() -> None:
                 backup(new_repo)
             return
 
-        def include(lines: list[str]) -> None:
-            spec = PathSpec.from_lines("gitwildmatch", lines)
+        include = get_list("include")
+        if include is None:
+            backup_cmd.append(repo_path)
+        else:
+            # resolve patterns like git
+            spec = PathSpec.from_lines("gitwildmatch", include)
             for root, _, files in os.walk(repo_path):
                 for name in files:
                     full_path = path.join(root, name)
                     rel_path = path.relpath(full_path, repo_path)
                     if spec.match_file(rel_path):
-                        args.append(full_path)
-
-        args = [archive_name + str(backup_n)]
-        included = check_list("include")
-        if included is None:
-            args.append(repo_path)
-        else:
-            include(included)
-        if get_repo_key("git", bool):
-            args.append(path.join(repo_path, ".git"))
+                        backup_cmd.append(full_path)
+        if repo_option("git", bool):
+            backup_cmd.append(path.join(repo_path, ".git"))
             gits.append(repo_path)
-        excluded = check_list("exclude")
+        excluded = get_list("exclude")
         if excluded is not None:
             for pattern in excluded:
-                args += ["-e", pattern]
-
-        borg(borg_backup + args)
-        print(f"Backup number {backup_n} completed")
-        backup_n += 1
-
-    repos = option("repos", list)
-    if repos:
-        print("Backing up...")
-        for repo in repos:
-            if type(repo) is not dict:
-                error(f"Repo number {repos.index(repo) + 1} is not a dictionary")
-        for repo in repos:
-            backup(repo)
-    else:
-        error("'repos' must be set to backup your repositories")
+                backup_cmd += ["-e", path.join(repo_path, pattern)]
+    for repo in repos:
+        backup(repo)
+    borg(backup_cmd)
     # git directories
     write(path_in_target("git_directories"), str(gits))
     print("Backup completed")

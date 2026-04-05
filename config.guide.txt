@@ -16,7 +16,7 @@ repos: list[dict]           # which of your repositories to back up (see below)
 
 Repo:
     path: str               # must be set. It's read relatively from the HOME directory
-    include: list[str]      # supports shell globs
+    include: list[str]      # supports git patterns (like you'd put in a .gitignore, but for including)
     exclude: list[str]      # supports fnmatch patterns
     git: bool = False       # objects in include will be added on top of the one in the git repo
     directories: list[str]  # with this option, the program will run for all the given directories in 'path'
