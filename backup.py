@@ -70,8 +70,6 @@ def main() -> None:
                       if len(devices) == 0 else
                       f"More than one device labelled '{target_label}' was found\nDisconnect one or change its label")
         else:
-            if path.exists(target_dir):
-                error("target_path doesn't seem to be a real path")
             try:
                 device_node = pyudev.Devices.from_device_file(device_database, target_dir).device_node
             except pyudev.DeviceNotFoundError:
