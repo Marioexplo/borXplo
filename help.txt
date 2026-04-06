@@ -10,11 +10,7 @@ Usage: borxplo COMMAND
         help                shows this message
 
         guide               shows a guide of the configuration file
-
-        automatic [-t|--terminal] DAYS
-                            handles the option to automatically open the GUI when the system powers on
-            -t|--terminal   print the messages of the backup process to a terminal
-                            if the option had been enabled and it is not given again, it disables
+        automatic DAYS      automatically checks if it's time to back up when you log in
             DAYS            the amount of days after which to remember to back up
                             if it's less than 1, the option is deactivated
 

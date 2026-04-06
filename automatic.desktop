@@ -1,4 +1,6 @@
-[Desktop entry]
+[Desktop Entry]
 Type=Application
+Name=borXplo
 Exec=borxplo check
-Terminal=
+Icon=drive-removable-media
+Terminal=false

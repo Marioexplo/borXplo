@@ -21,17 +21,8 @@ match argv[1]:
         from utils import AUTOMATIC, write
         if len(argv) == 2:
             error("The number of days must be given")
-        if len(argv) > 4:
-            error("Too many arguments")
 
-        terminal = 0
-        if len(argv) == 4:
-            if argv[2] == "-t" or argv[2] == "--terminal":
-                terminal = 1
-            else:
-                error('Invalid input to enable the terminal option. Only "terminal", "true" and "0" are accepted')
-
-        n_str = argv[2 + terminal]
+        n_str = argv[2]
         try:
             n = int(n_str)
         except ValueError:
@@ -41,7 +32,7 @@ match argv[1]:
         if n > 0:
             if not path.exists(AUTOSTART):
                 with open(path.join(APP_FILES, "automatic.desktop")) as f:
-                    write(AUTOSTART, f.read() + ("true" if terminal else "false"))
+                    write(autostart, f.read())
             write(AUTOMATIC, n_str)
         elif path.exists(AUTOSTART):
             if path.isfile(AUTOSTART):
