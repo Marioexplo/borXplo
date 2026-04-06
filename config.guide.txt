@@ -43,6 +43,6 @@ Here's an example:
                 "memo.txt"
             ]
         }
-    ]
+    ],
     "unmount": true
 }

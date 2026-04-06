@@ -1,7 +1,7 @@
 import typing
 
 def main() -> None:
-    from main import argv, path, HOME, CONFIG, error, read, write
+    from utils import argv, path, HOME, CONFIG, error, read, write
     import json
     import pyudev
     import os
