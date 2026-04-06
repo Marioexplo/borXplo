@@ -28,17 +28,26 @@ match argv[1]:
         except ValueError:
             error(n_str + " is not an integer")
 
-        AUTOSTART = path.join(HOME, ".config/autostart/borxplo.desktop")
+        autostart = path.join(HOME, ".config/autostart")
+        if not path.isdir(autostart):
+            if path.exists(autostart):
+                error(autostart + " should not be a file!\nMove it away to allow procecesses to automatically start when you log in")
+            else:
+                from os import mkdir
+                mkdir(autostart)
+
+        autostart = path.join(autostart, "borxplo.desktop")
+        autostart_exists = path.exists(autostart)
         if n > 0:
-            if not path.exists(AUTOSTART):
+            if autostart_exists:
                 with open(path.join(APP_FILES, "automatic.desktop")) as f:
                     write(autostart, f.read())
             write(AUTOMATIC, n_str)
-        elif path.exists(AUTOSTART):
-            if path.isfile(AUTOSTART):
-                os.remove(AUTOSTART)
+        elif autostart_exists:
+            if path.isfile(autostart):
+                os.remove(autostart)
             else:
-                error(AUTOSTART + " was not expected to be a directory")
+                error(autostart + " was not expected to be a directory")
 
     case "check":
         import check
