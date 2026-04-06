@@ -79,11 +79,20 @@ def main() -> None:
         if type(device_node) is not str:
             error("The device directory couldn't be found")
         subprocess.run(["udisksctl", "mount", "-b", device_node], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        target_path = ""
         for line in read("/proc/self/mounts").split("\n"):
+            if not line:
+                continue
             parts = line.split()
             if parts[0] == device_node:
                 target_path = parts[1]
                 break
+        if not target_path:
+            error(f"It was not possible to mount {device_node}\nMake sure that {
+                f"'{target_label}' points to" # pyright: ignore[reportPossiblyUnboundVariable, reportOperatorIssue]
+                if target_node is None else
+                f"'{target_node}' is"
+                } a valid device")
     print("Target device configured")
 
     def path_in_target(relative: str)->str:
