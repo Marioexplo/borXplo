@@ -243,14 +243,13 @@ def main() -> None:
     if device_node:
         def unmount() -> None:
             subprocess.run(["udisksctl", "unmount", "-b", device_node], stdout=subprocess.DEVNULL)
-            print(f"Device {target_label if target_label else device_node} unmounted") # pyright: ignore[reportPossiblyUnboundVariable]
+            print(f"Device {device_node if target_node else target_label} unmounted") # pyright: ignore[reportPossiblyUnboundVariable]
         must_unmount = option("unmount", bool)
-        if shutil.which("notify-send"):
+        if shutil.which("notify-send", path=env["PATH"]):
             notify_cmd = ["notify-send",
                 "Backup completed", "borXplo has completed the backup process.",
                 "-a", "borXplo",
-                "-i", "removable-media",
-                "-n", "media-flash"
+                "-i", "drive-removable-media"
             ]
             if must_unmount:
                 unmount()
