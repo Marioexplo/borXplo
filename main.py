@@ -1,4 +1,4 @@
-from utils import argv, path, error, HOME
+from utils import argv, path, error, HOME, exit
 from sys import _MEIPASS as APP_FILES  # pyright: ignore[reportAttributeAccessIssue]
 import os
 
