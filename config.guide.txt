@@ -15,12 +15,19 @@ unmount: bool = False       # wether to unmount the target when the backup proce
 repos: list[dict]           # which of your repositories to back up (see below)
 
 Repo:
-    path: str               # must be set. It's read relatively from the HOME directory
-    include: list[str]      # supports git patterns (like you'd put in a .gitignore, but for including)
-    exclude: list[str]      # supports fnmatch patterns
+    path: str               # must be set. Resolves symlinks.
+                            # This is read relatively from the HOME directory.
+                            # It's preferable not to try to back up files unaccessible with user privileges.
+    include: list[str]      # supports shell-like patterns, read from 'path'. Note that with this,
+                            # if you give a path that doesn't exist, it will be ignored and no error will be raised
+    exclude: list[str]      # uses fnmatch patterns* by default
+    patterns: list[str]     # *. Unlike Borg, 'sh:' is not implicit and can't be omitted.
+                            # Because of how borXplo works, syntax prefixes R and P are not available
     git: bool = False       # objects in include will be added on top of the one in the git repo
     directories: list[str]  # with this option, the program will run for all the given directories in 'path'
                             # if a file is given, an error will be returned
+include, exclude, patterns and directories are read from 'path'
+* see 'borg help patterns' for advanced usage
 
 Here's an example:
 {

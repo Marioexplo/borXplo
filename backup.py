@@ -9,7 +9,7 @@ def main() -> None:
     import sys
     from datetime import datetime
     import locale
-    from pathspec import PathSpec
+    from glob import glob
     from last_backup import update_last
     import shutil
 
@@ -172,12 +172,13 @@ def main() -> None:
     repos = option("repos", list)
     if not repos:
         error("'repos' must be set to backup your repositories")
+    S = typing.TypeVar("S")
     def backup(repo)->None|typing.Never:
         nonlocal backup_cmd
         if type(repo) is not dict:
             error(f"Repo number {repos.index(repo) + 1} is not a dictionary")
 
-        def repo_option(key: str, typ: typing.Type[T])->T|None|typing.Never:
+        def repo_option(key: str, typ: typing.Type[S]) -> S | None | typing.Never:
             return option(key, typ, repo)
         def get_list(key: str)->list[str]|None|typing.Never:
             lis = repo_option(key, list)
@@ -191,7 +192,7 @@ def main() -> None:
         repo_path = repo_option("path", str)
         if not repo_path:
             error("A 'path' value must be defined for each archive")
-        repo_path = path.join(HOME, repo_path)
+        repo_path = path.realpath(path.join(HOME, repo_path))
 
         # directories feature
         directories = get_list("directories")
@@ -200,7 +201,7 @@ def main() -> None:
             for dir in directories:
                 dir = path.join(repo_path, dir)
                 if not path.isdir(dir):
-                    error("A path in 'directories' was not a directory")
+                    error(f"A path in 'directories' of the repo with path '{repo_path}' was not a directory")
                 new_repo = dict(repo)
                 new_repo["path"] = dir
                 backup(new_repo)
@@ -209,16 +210,11 @@ def main() -> None:
         include = get_list("include")
         git = repo_option("git", bool)
         exclude = get_list("exclude")
+        patterns = get_list("patterns")
         if include:
-            # resolve patterns like git
-            spec = PathSpec.from_lines("gitwildmatch", include)
-            for root, _, files in os.walk(repo_path):
-                for name in files:
-                    full_path = path.join(root, name)
-                    rel_path = path.relpath(full_path, repo_path)
-                    if spec.match_file(rel_path):
-                        backup_cmd.append(full_path)
-        elif exclude or not git:
+            for glob_path in include:
+                backup_cmd += [*glob(path.join(repo_path, glob_path))]
+        elif exclude or patterns or not git:
             backup_cmd.append(repo_path)
         if git:
             backup_cmd.append(path.join(repo_path, ".git"))
@@ -226,6 +222,12 @@ def main() -> None:
         if exclude is not None:
             for pattern in exclude:
                 backup_cmd += ["-e", path.join(repo_path, pattern)]
+        if patterns:
+            for pattern in patterns:
+                action, dd, pattern = pattern.partition(":")
+                if not dd:
+                    error("':' wasn't found in the pattern of the repo with path " + repo_path)
+                backup_cmd += ["--pattern", action + dd + path.join(repo_path, pattern)]
     for repo in repos:
         backup(repo)
     print("Backing up...")
