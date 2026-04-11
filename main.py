@@ -53,5 +53,9 @@ match argv[1]:
         import check
         check.main()
 
+    case "extract":
+        import extract
+        extract.main()
+
     case _:
         error("Invalid command")

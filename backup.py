@@ -4,9 +4,9 @@ def main() -> None:
     from utils import argv, path, HOME, CONFIG, error, read, write
     import json
     import pyudev
-    import os
+    from shell_utils import borg, env
     import subprocess
-    import sys
+    import os
     from datetime import datetime
     import locale
     from glob import glob
@@ -105,22 +105,11 @@ def main() -> None:
         if not path.isdir(target_path):
             error(target_directory + " was not a directory inside the target")
 
-    # prepare environment
-    env = os.environ.copy()
-    env.pop("LD_LIBRARY_PATH", None) # Remove PyInstaller’s injected paths
-    env.pop("LD_PRELOAD", None)
-    env["PATH"] = "/usr/bin:/bin"
-
     # borg helper
     borg_command = ["borg"]
     progress = option("progress", bool)
     if progress:
         borg_command.append("--progress")
-    def borg(args: list[str])->None|typing.Never:
-        returncode = subprocess.run(borg_command + args, env=env).returncode
-        if returncode != 0:
-            print("Borg exited with error")
-            sys.exit(returncode)
 
     # configure repo
     print("Configuring backup repository")
@@ -233,7 +222,7 @@ def main() -> None:
     print("Backing up...")
     borg(backup_cmd)
     # git directories
-    write(path_in_target("git_directories"), str(gits))
+    write(path_in_target("git_directories"), json.dumps(gits))
     print("Backup completed")
 
     # compact repo

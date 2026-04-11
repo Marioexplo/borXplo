@@ -18,3 +18,6 @@ Usage: borxplo COMMAND
             -d|--days       overrides what is already set by the 'automatic' command
             DAYS            the amount of days that need to have passed to back up
             --no-gui        do not display the GUI before backing up
+        extract [--progress] PATH
+                            extract all contents from the repository at PATH to their respective paths
+            --progress      shows progress. This can make the process slower
