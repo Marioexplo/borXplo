@@ -4,6 +4,7 @@ def main() -> None:
     from utils import argv, path, HOME, CONFIG, error, read, write
     import json
     import pyudev
+    import shell_utils
     from shell_utils import borg, env
     import subprocess
     import os
@@ -105,14 +106,10 @@ def main() -> None:
         if not path.isdir(target_path):
             error(target_directory + " was not a directory inside the target")
 
-    # borg helper
-    borg_command = ["borg"]
-    progress = option("progress", bool)
-    if progress:
-        borg_command.append("--progress")
-
     # configure repo
     print("Configuring backup repository")
+    if option("progress", bool):
+        shell_utils.borg_cmd.append("--progress")
     repo_path = path_in_target("repo")
     quota = option("quota", float)
     quota_exists = quota is not None
@@ -228,9 +225,9 @@ def main() -> None:
     # compact repo
     max_archives = option("max_archives", int)
     if max_archives is not None:
-        archives_number = subprocess.run(["borg", "list", "--short", repo_path],
-                                         capture_output=True, text=True, env=env
-                                         ).stdout.count("\n")
+        archives_number = borg(["list", "--short", repo_path],
+                               capture_output=True, text=True
+                               ).stdout.count("\n")
         if archives_number > max_archives:
             print("Compacting repository")
             borg(["delete", repo_path, "--first", str(archives_number - max_archives)])
