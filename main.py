@@ -1,6 +1,10 @@
+from shell_utils import cmd_exists
 from utils import argv, path, error, HOME, exit
 from sys import _MEIPASS as APP_FILES  # pyright: ignore[reportAttributeAccessIssue]
 import os
+
+if not cmd_exists("borg"):
+    error("Borg was not found. Install it before using borXplo")
 
 if len(argv) == 1 or argv[1][:2] == "--":
     if "--gui" in argv:
@@ -58,4 +62,4 @@ match argv[1]:
         extract.main()
 
     case _:
-        error("Invalid command")
+        error("Invalid command\nRun 'borxplo help' for a list of available commands")

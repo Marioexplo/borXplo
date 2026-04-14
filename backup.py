@@ -5,14 +5,13 @@ def main() -> None:
     import json
     import pyudev
     import shell_utils
-    from shell_utils import borg, env
+    from shell_utils import borg, cmd_exists, env
     import subprocess
     import os
     from datetime import datetime
     import locale
     from glob import glob
     from last_backup import update_last
-    import shutil
 
     # get config_path
     print("Retrievieng configuration file")
@@ -79,7 +78,7 @@ def main() -> None:
         # get device path to write
         if type(device_node) is not str:
             error("The device directory couldn't be found")
-        subprocess.run(["udisksctl", "mount", "-b", device_node], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(["udisksctl", "mount", "-b", device_node], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env)
         target_path = ""
         for line in read("/proc/self/mounts").split("\n"):
             if not line:
@@ -239,10 +238,10 @@ def main() -> None:
     # automatic unmounting and notifying
     if device_node:
         def unmount() -> None:
-            subprocess.run(["udisksctl", "unmount", "-b", device_node], stdout=subprocess.DEVNULL)
+            subprocess.run(["udisksctl", "unmount", "-b", device_node], stdout=subprocess.DEVNULL, env=env)
             print(f"Device {device_node if target_node else target_label} unmounted") # pyright: ignore[reportPossiblyUnboundVariable]
         must_unmount = option("unmount", bool)
-        if shutil.which("notify-send", path=env["PATH"]):
+        if cmd_exists("notify-send"):
             notify_cmd = ["notify-send",
                 "Backup completed", "borXplo has completed the backup process.",
                 "-a", "borXplo",
@@ -251,12 +250,12 @@ def main() -> None:
             if must_unmount:
                 unmount()
                 notify_cmd[2] += "\nThe media can now be removed."
-                subprocess.run(notify_cmd)
+                subprocess.run(notify_cmd, env=env)
             else:
                 notify_cmd += ["-A", "Unmount media", "-t", "7000"]
                 notify_action = False
                 try:
-                    notify_action = subprocess.run(notify_cmd, capture_output=True, text=True).stdout
+                    notify_action = subprocess.run(notify_cmd, capture_output=True, text=True, env=env).stdout
                 except subprocess.TimeoutExpired:
                     pass
                 if notify_action:

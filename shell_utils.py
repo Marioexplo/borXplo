@@ -1,4 +1,5 @@
 from os import environ
+from shutil import which
 from typing import Never
 import subprocess
 from sys import exit
@@ -6,8 +7,10 @@ from sys import exit
 # prepare environment
 env = environ.copy()
 env.pop("LD_LIBRARY_PATH", None) # Remove PyInstaller’s injected paths
-env.pop("LD_PRELOAD", None)
-env["PATH"] = "/usr/bin:/bin"
+env["PATH"] = "/usr/bin"
+
+def cmd_exists(cmd: str) -> bool:
+    return bool(which(cmd, path=env["PATH"]))
 
 borg_cmd = ["borg"]
 def borg(cmd: list[str], **kwargs) -> subprocess.CompletedProcess | Never:
