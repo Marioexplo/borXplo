@@ -20,7 +20,7 @@ def main() -> None:
         index = argv.index("--config")
         if len(argv) < index:
             error("No config file path was given after '--config'!")
-        config_path = argv[index - 1]
+        config_path = argv[index + 1]
     else:
         config_path = path.join(CONFIG, "config.json")
 
