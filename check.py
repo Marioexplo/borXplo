@@ -3,15 +3,24 @@ def main() -> None:
     from utils import path, error, AUTOMATIC, read, argv
     from last_backup import LAST_BACKUP, DATE_FORMAT, update_last
 
-    def backup() -> None:
-        if "--no-gui" in argv:
-            from backup import main
-        else:
-            from gui import main
-        main()
+    if "--no-gui" in argv:
+        from backup import main
+    else:
+        from gui import main
+        import utils
+        from typing import Never
+        from shell_utils import cmd_exists
+        from subprocess import run
+        from sys import exit
+        def gui_error(text: str) -> Never:
+            if cmd_exists("notify-send"):
+                run(["notify-send", text, "-a", "borXplo", "-i", "drive-removable-media"])
+            exit(1)
+        utils.error = gui_error
+        error = gui_error
 
     if not path.exists(LAST_BACKUP):
-        backup()
+        main()
         return
 
     last_backup = read(LAST_BACKUP)
@@ -40,4 +49,4 @@ def main() -> None:
         error("""It was not possible to parse the amount of days for the automatic backup execution
 Use 'borxplo automatic' to set it again""")
     if (datetime.date.today() - last_backup).days >= days:
-        backup()
+        main()
