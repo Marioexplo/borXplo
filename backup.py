@@ -198,7 +198,7 @@ def main() -> None:
         patterns = get_list("patterns")
         if include:
             for glob_path in include:
-                backup_cmd += [*glob(path.join(repo_path, glob_path))]
+                backup_cmd += [path.realpath(p) for p in glob(path.join(repo_path, glob_path))]
         elif exclude or patterns or not git:
             backup_cmd.append(repo_path)
         if git:
