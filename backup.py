@@ -157,9 +157,10 @@ def main() -> None:
     repos = option("repos", list)
     if not repos:
         error("'repos' must be set to backup your repositories")
+    pattern_args: list[str] = list()
     S = typing.TypeVar("S")
     def backup(repo)->None|typing.Never:
-        nonlocal backup_cmd
+        nonlocal backup_cmd, pattern_args
         if type(repo) is not dict:
             error(f"Repo number {repos.index(repo) + 1} is not a dictionary")
 
@@ -206,17 +207,17 @@ def main() -> None:
             gits.append(repo_path)
         if exclude is not None:
             for pattern in exclude:
-                backup_cmd += ["-e", path.join(repo_path, pattern)]
+                pattern_args += ["-e", path.join(repo_path, pattern)]
         if patterns:
             for pattern in patterns:
                 action, dd, pattern = pattern.partition(":")
                 if not dd:
                     error("':' wasn't found in the pattern of the repo with path " + repo_path)
-                backup_cmd += ["--pattern", action + dd + path.join(repo_path, pattern)]
+                pattern_args += ["--pattern", action + dd + path.join(repo_path, pattern)]
     for repo in repos:
         backup(repo)
     print("Backing up...")
-    borg(backup_cmd)
+    borg(backup_cmd + pattern_args)
     # git directories
     write(path_in_target("git_directories"), json.dumps(gits))
     print("Backup completed")
