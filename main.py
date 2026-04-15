@@ -43,9 +43,8 @@ match argv[1]:
         autostart = path.join(autostart, "borxplo.desktop")
         autostart_exists = path.exists(autostart)
         if n > 0:
-            if autostart_exists:
-                with open(path.join(APP_FILES, "automatic.desktop")) as f:
-                    write(autostart, f.read())
+            if not autostart_exists:
+                write(autostart, open(path.join(APP_FILES, "automatic.desktop")).read())
             write(AUTOMATIC, n_str)
         elif autostart_exists:
             if path.isfile(autostart):
