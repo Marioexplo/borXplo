@@ -15,19 +15,19 @@ unmount: bool = False       # wether to unmount the target when the backup proce
 repos: list[dict]           # which of your repositories to back up (see below)
 
 Repo:
-    path: str               # must be set. Resolves symlinks.
-                            # This is read relatively from the HOME directory.
-                            # It's preferable not to try to back up files unaccessible with user privileges.
-    include: list[str]      # supports shell-like patterns, read from 'path'. Note that with this,
-                            # if you give a path that doesn't exist, it will be ignored and no error will be raised
-    exclude: list[str]      # uses fnmatch patterns* by default
-    patterns: list[str]     # *. Unlike Borg, 'sh:' is not implicit and can't be omitted.
-                            # Because of how borXplo works, syntax prefixes R and P are not available
-    git: bool = False       # objects in include will be added on top of the one in the git repo
+    path: str               # must be set. This is read relatively from the HOME directory.
+    include: list[str]      # only the paths in the list will be included. Supports shell-like patterns, read from 'path'.
+                            # Note that with this, a path that doesn't exist will just be ignored
+    exclude: list[str]      # uses fnmatch patterns
+    patterns: list[str]     # see 'borg help patterns' for advanced usage. Unlike Borg, 'sh:' is not implicit and
+                            # can't be omitted and syntax prefixes R and P are not available
+    git: bool = False       # just the git repository will be backed up
     directories: list[str]  # with this option, the program will run for all the given directories in 'path'
                             # if a file is given, an error will be returned
-include, exclude, patterns and directories are read from 'path'
-* see 'borg help patterns' for advanced usage
+include, exclude, patterns and directories are read from 'path'.
+'path' and 'include' resolve symlinks.
+If 'include' or 'git' are set, 'path' will not be included.
+If you exclude a directory with 'exclude', even if you put a path inside that directory in a 'path' or 'include' of any Repo, that path will still be ignored. To include it you must use 'patterns', e.g. if you wanted to exclude only the directory "Python" inside "Projects" but keep "Python/borXplo", your Repo would look like this: {"path":"Projects","patterns":["+ sh:Python/borXplo","- sh:Python"]}
 
 Here's an example:
 {
