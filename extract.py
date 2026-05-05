@@ -24,7 +24,10 @@ def main() -> None:
         print("git_directories did not contain a list of strings")
         print("Git repositories will be ignored")
 
+    print("Info about the repository that is about to be extracted:")
     borg_repo = path.join(repo, "repo")
+    shell_utils.borg(["info", borg_repo])
+
     info = shell_utils.borg(["info", borg_repo, "--last", "1", "--json"], capture_output=True, text=True)
     if info.returncode != 0:
         print(info.stderr)
