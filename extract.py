@@ -1,20 +1,15 @@
 def main() -> None:
-    from utils import error, path, read
-    from sys import argv, exit
+    from utils import argparser, error, path, read
+    from sys import exit
     import json
     from subprocess import run
     import shell_utils
 
-    if len(argv) == 2:
-        error("The path to the repo must be given!")
+    argparser.add_argument("--progress", action="store_true")
+    argparser.add_argument("repo", required=True)
+    args = argparser.parse_args()
 
-    cmd = ["borg"]
-    progress = 0
-    if len(argv) == 4 and argv[2] == "--progress":
-        cmd.append(argv[2])
-        progress = 1
-
-    repo = argv[2 + progress]
+    repo = args.repo
     if not path.exists(repo):
         error(repo + " doesn't seem to exist")
     if not path.isdir(repo):
@@ -37,7 +32,7 @@ def main() -> None:
         exit(info.returncode)
     archive: str = json.loads(info.stdout)["archives"][0]["name"]
 
-    if progress == 1:
+    if args.progress:
         shell_utils.borg_cmd.append("--progress")
     shell_utils.borg(["extract", path.abspath(borg_repo) + "::" + archive], cwd="/")
 

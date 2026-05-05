@@ -1,7 +1,7 @@
 import typing
 
-def main() -> None:
-    from utils import argv, path, HOME, CONFIG, error, read, write
+def main(target_path: str | None, config_path: str | None) -> None:
+    from utils import path, HOME, CONFIG, error, read, write
     import json
     import pyudev
     import shell_utils
@@ -15,12 +15,7 @@ def main() -> None:
 
     # get config_path
     print("Retrievieng configuration file")
-    if "--config" in argv:
-        index = argv.index("--config")
-        if len(argv) < index:
-            error("No config file path was given after '--config'!")
-        config_path = argv[index + 1]
-    else:
+    if config_path is None:
         config_path = path.join(CONFIG, "config.json")
 
     # get config
@@ -43,12 +38,7 @@ def main() -> None:
     # get storage device
     print("Searching for target device")
     device_node: str | None = None
-    if "--path" in argv:
-        index = argv.index("--path")
-        if len(argv) < index:
-            error("No path was given after '--path'!")
-        target_path = argv[index + 1]
-    else:
+    if target_path is None:
         device_database = pyudev.Context()
         target_node = option("target_node", str)
         if target_node is None:
@@ -96,7 +86,7 @@ def main() -> None:
     print("Target device configured")
 
     def path_in_target(relative: str)->str:
-        return path.join(target_path, relative)
+        return path.join(target_path, relative)  # pyright: ignore[reportCallIssue, reportArgumentType]
 
     print("Preparing for the backup process")
     target_directory = option("directory", str)

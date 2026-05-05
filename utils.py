@@ -1,10 +1,13 @@
-from sys import argv, exit  # noqa: F401
+from sys import exit
 import typing
+from argparse import ArgumentParser as _ArgParser
 from os import path
 
 def error(text: str)->typing.Never:
     print(text)
     exit(1)
+
+argparser = _ArgParser("borXplo", add_help=False)
 
 def read(path: str) -> str | typing.Never:
     try:

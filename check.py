@@ -1,11 +1,15 @@
 def main() -> None:
     import datetime
-    from utils import path, error, AUTOMATIC, read, argv
+    from utils import argparser, path, error, AUTOMATIC, read
     from last_backup import LAST_BACKUP, DATE_FORMAT, update_last
 
-    if "--no-gui" in argv:
-        from backup import main
-    else:
+    argparser.add_argument("-d", "--days")
+    argparser.add_argument("--no-gui", action="store_false", default=True, dest="gui")
+    argparser.add_argument("--path")
+    argparser.add_argument("--config")
+    args = argparser.parse_args()
+
+    if args.gui:
         from gui import main
         import utils
         from typing import Never
@@ -18,6 +22,10 @@ def main() -> None:
             exit(1)
         utils.error = gui_error
         error = gui_error
+    else:
+        from backup import main as _main
+        def main() -> None:
+            _main(args.path, args.config)
 
     if not path.exists(LAST_BACKUP):
         main()
@@ -30,23 +38,16 @@ def main() -> None:
         update_last()
         error("It was not possible to parse the saved date of last backup\nThe file was overwritten with today's date")
 
-    days_index = None
-    for key in ("-d", "--days"):
-        if key in argv:
-            days_index = argv.index(key) + 1
-            break
-    if days_index is None:
+    if args.days is None:
         if not path.exists(AUTOMATIC):
             error("No amount of days given or set by 'automatic'")
         days = read(AUTOMATIC)
-    elif len(argv) > days_index:
-        days = (argv[days_index])
     else:
-        error("The amount of days must be provided when using " + key)  # pyright: ignore[reportPossiblyUnboundVariable]
+        days = args.days
     try:
         days = int(days)
     except ValueError:
-        error("""It was not possible to parse the amount of days for the automatic backup execution
+        error("""It was not possible to parse the amount of days for the automatic backup execution\n
 Use 'borxplo automatic' to set it again""")
     if (datetime.date.today() - last_backup).days >= days:
         main()

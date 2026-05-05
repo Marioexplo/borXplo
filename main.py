@@ -1,26 +1,28 @@
 from shell_utils import cmd_exists
-from utils import argv, path, error, HOME, exit
-from sys import _MEIPASS as APP_FILES  # pyright: ignore[reportAttributeAccessIssue]
+from utils import argparser, path, error, HOME, exit
+from sys import argv, _MEIPASS as APP_FILES  # pyright: ignore[reportAttributeAccessIssue]
 import os
 
 if not cmd_exists("borg"):
     error("Borg was not found. Install it before using borXplo")
 
-if len(argv) == 1 or argv[1][:2] == "--":
-    if "--gui" in argv:
+del argv[0]
+if len(argv) == 1 or argv[0][:2] == "--" and argv[0] != "--help":
+    argparser.add_argument("--path")
+    argparser.add_argument("--config")
+    argparser.add_argument("--gui", action="store_true")
+    args = argparser.parse_args()
+
+    if args.gui:
         import gui
         gui.main()
     else:
         import backup
-        backup.main()
+        backup.main(args.path, args.config)
     exit()
 
 APP_FILES: str
-match argv[1]:
-    case "help" | "guide":
-        with open(path.join(APP_FILES, "help.txt" if argv[1] == "help" else "config.guide.txt")) as help:
-            print(help.read())
-
+match argv.pop(0):
     case "automatic":
         from utils import AUTOMATIC, write
         if len(argv) == 2:
@@ -59,6 +61,14 @@ match argv[1]:
     case "extract":
         import extract
         extract.main()
+
+    case "-h" | "--help" | "help":
+        with open(path.join(APP_FILES, "help.txt")) as help:
+            print(help.read())
+
+    case "guide":
+        with open(path.join(APP_FILES, "config.guide.txt")) as guide:
+            print(guide.read())
 
     case _:
         error("Invalid command\nRun 'borxplo help' for a list of available commands")
