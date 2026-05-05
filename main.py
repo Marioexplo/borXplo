@@ -23,16 +23,16 @@ if len(argv) == 1 or argv[0][:2] == "--" and argv[0] != "--help":
 
 APP_FILES: str
 match argv.pop(0):
-    case "automatic":
+    case "auto":
         from utils import AUTOMATIC, write
-        if len(argv) == 2:
-            error("The number of days must be given")
 
-        n_str = argv[2]
+        argparser.add_argument("days", required=True)
+        days_str: str = argparser.parse_args().days
+
         try:
-            n = int(n_str)
+            days = int(days_str)
         except ValueError:
-            error(n_str + " is not an integer")
+            error(days_str + " is not an integer")
 
         autostart = path.join(HOME, ".config/autostart")
         if not path.isdir(autostart):
@@ -44,10 +44,10 @@ match argv.pop(0):
 
         autostart = path.join(autostart, "borxplo.desktop")
         autostart_exists = path.exists(autostart)
-        if n > 0:
+        if days > 0:
             if not autostart_exists:
                 write(autostart, open(path.join(APP_FILES, "automatic.desktop")).read())
-            write(AUTOMATIC, n_str)
+            write(AUTOMATIC, days_str)
         elif autostart_exists:
             if path.isfile(autostart):
                 os.remove(autostart)

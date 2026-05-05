@@ -9,7 +9,7 @@ Usage: borxplo COMMAND
     COMMAND can be one of the following options:
         help                shows this message
         guide               shows a guide of the configuration file
-        automatic DAYS      automatically checks if it's time to back up when you log in
+        auto DAYS           automatically checks if it's time to back up when you log in
             DAYS            the amount of days after which to remember to back up
                             if it's less than 1, the option is deactivated
         check [-d|--days DAYS] [--no-gui] [--path PATH] [--config PATH]
