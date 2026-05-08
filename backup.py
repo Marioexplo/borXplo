@@ -1,7 +1,5 @@
-import typing
-
 def main(target_path: str | None, config_path: str | None) -> None:
-    from utils import path, HOME, CONFIG, error, read, write
+    from utils import path, HOME, CONFIG, error, read, write, typing
     import json
     import pyudev
     import shell_utils
@@ -104,9 +102,20 @@ def main(target_path: str | None, config_path: str | None) -> None:
     quota_exists = quota is not None
     quota_config = path_in_target("quota")
     def set_repo_quota() -> None | typing.Never:
-        write(quota_config, str( quota))
+        write(quota_config, str(quota))
     if path.exists(repo_path):
-        borg(["check", repo_path])
+        # integrity checks
+        check = option("check", bool)
+        full_check = option("full_check", int)
+        if full_check:
+            FULL_COUNT = path.join(CONFIG, "full_count")
+            if path.exists(FULL_COUNT) and int(read(FULL_COUNT)) >= full_check:
+                borg(["check", "--verify-data", repo_path])
+                write(FULL_COUNT, "0")
+            else:
+                write(FULL_COUNT, str(full_check + 1))
+        elif check is None or check:
+            borg(["check", repo_path])
 
         repo_quota = None
         if path.exists(quota_config):
@@ -186,7 +195,7 @@ def main(target_path: str | None, config_path: str | None) -> None:
         include = get_list("include")
         git = repo_option("git", bool)
         exclude = get_list("exclude")
-        patterns = get_list("patterns")
+        patterns = get_list("patterns")  # pyright: ignore[reportGeneralTypeIssues]
         if include:
             for glob_path in include:
                 backup_cmd += [path.realpath(p) for p in glob(path.join(repo_path, glob_path))]
@@ -195,7 +204,7 @@ def main(target_path: str | None, config_path: str | None) -> None:
         if git:
             backup_cmd.append(path.join(repo_path, ".git"))
             gits.append(repo_path)
-        if exclude is not None:
+        if exclude:
             for pattern in exclude:
                 pattern_args += ["-e", path.join(repo_path, pattern)]
         if patterns:
