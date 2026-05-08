@@ -28,7 +28,7 @@ def main() -> None:
     borg_repo = path.join(repo, "repo")
     shell_utils.borg(["info", borg_repo])
 
-    info = shell_utils.borg(["info", borg_repo, "--last", "1", "--json"], capture_output=True, text=True)
+    info = run(["borg", "info", borg_repo, "--last", "1", "--json"], capture_output=True, text=True, env=shell_utils.env)
     if info.returncode != 0:
         print(info.stderr)
         print("Borg exited with error")
