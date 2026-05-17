@@ -9,13 +9,13 @@ def error(text: str)->typing.Never:
 
 argparser = _ArgParser("borXplo", add_help=False)
 
-def read(path: str) -> str | typing.Never:
+def read(path: str) -> str:
     try:
         with open(path) as f:
             return f.read()
     except OSError as e:
         error(f"It was not possible to read into {path}: {e}")
-def write(path: str, text: str) -> None | typing.Never:
+def write(path: str, text: str) -> None:
     try:
         with open(path, "w") as f:
             f.write(text)

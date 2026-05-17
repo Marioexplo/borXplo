@@ -1,6 +1,5 @@
 from os import environ
 from shutil import which
-from typing import Never
 import subprocess
 from sys import exit
 
@@ -13,7 +12,7 @@ def cmd_exists(cmd: str) -> bool:
     return bool(which(cmd, path=env["PATH"]))
 
 borg_cmd = ["borg"]
-def borg(cmd: list[str], **kwargs) -> subprocess.CompletedProcess | Never:
+def borg(cmd: list[str], **kwargs) -> subprocess.CompletedProcess:
     proc = subprocess.run(borg_cmd + cmd, env=env, **kwargs)
     if proc.returncode != 0:
         print("Borg exited with error")

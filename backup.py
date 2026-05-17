@@ -26,7 +26,7 @@ def main(target_path: str | None, config_path: str | None) -> None:
         error("borXplo.json was not a json object!" + SEEK_HELP)
 
     T = typing.TypeVar("T")
-    def option(key: str, typ: typing.Type[T], d: dict = config) -> T | None | typing.Never:
+    def option(key: str, typ: typing.Type[T], d: dict = config) -> T | None:
         if key not in d:
             return None
         if type(d[key]) is typ:
@@ -101,7 +101,7 @@ def main(target_path: str | None, config_path: str | None) -> None:
     quota = option("quota", float)
     quota_exists = quota is not None
     quota_config = path_in_target("quota")
-    def set_repo_quota() -> None | typing.Never:
+    def set_repo_quota() -> None:
         write(quota_config, str(quota))
     if path.exists(repo_path):
         # integrity checks
@@ -158,14 +158,14 @@ def main(target_path: str | None, config_path: str | None) -> None:
         error("'repos' must be set to backup your repositories")
     pattern_args: list[str] = list()
     S = typing.TypeVar("S")
-    def backup(repo)->None|typing.Never:
+    def backup(repo)->None:
         nonlocal backup_cmd, pattern_args
         if type(repo) is not dict:
             error(f"Repo number {repos.index(repo) + 1} is not a dictionary")
 
-        def repo_option(key: str, typ: typing.Type[S]) -> S | None | typing.Never:
+        def repo_option(key: str, typ: typing.Type[S]) -> S | None:
             return option(key, typ, repo)
-        def get_list(key: str)->list[str]|None|typing.Never:
+        def get_list(key: str)->list[str]|None:
             lis = repo_option(key, list)
             if lis is None:
                 return None
@@ -193,9 +193,9 @@ def main(target_path: str | None, config_path: str | None) -> None:
             return
 
         include = get_list("include")
-        git = repo_option("git", bool)
+        git = repo_option("git", bool)  # pyright: ignore[reportGeneralTypeIssues]
         exclude = get_list("exclude")
-        patterns = get_list("patterns")  # pyright: ignore[reportGeneralTypeIssues]
+        patterns = get_list("patterns")
         if include:
             for glob_path in include:
                 backup_cmd += [path.realpath(p) for p in glob(path.join(repo_path, glob_path))]
