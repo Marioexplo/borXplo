@@ -1,16 +1,16 @@
 def main() -> None:
+    from backup import backup_args
     import datetime
     from utils import argparser, path, error, AUTOMATIC, read
     from last_backup import LAST_BACKUP, DATE_FORMAT, update_last
 
     argparser.add_argument("-d", "--days")
     argparser.add_argument("--no-gui", action="store_false", default=True, dest="gui")
-    argparser.add_argument("--path")
-    argparser.add_argument("--config")
+    backup_args()
     args = argparser.parse_args()
 
     if args.gui:
-        from gui import main
+        from gui import main as _main
         import utils
         from typing import Never
         from shell_utils import cmd_exists
@@ -24,8 +24,8 @@ def main() -> None:
         error = gui_error
     else:
         from backup import main as _main
-        def main() -> None:
-            _main(args.path, args.config)
+    def main() -> None:
+        _main(args)
 
     if not path.exists(LAST_BACKUP):
         main()

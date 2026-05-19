@@ -1,6 +1,7 @@
 from shell_utils import cmd_exists
 from utils import argparser, path, error, HOME, exit
 from sys import argv, _MEIPASS as APP_FILES  # pyright: ignore[reportAttributeAccessIssue]
+from backup import backup_args
 import os
 
 if not cmd_exists("borg"):
@@ -8,17 +9,15 @@ if not cmd_exists("borg"):
 
 del argv[0]
 if len(argv) == 1 or argv[0][:2] == "--" and argv[0] != "--help":
-    argparser.add_argument("--path")
-    argparser.add_argument("--config")
     argparser.add_argument("--gui", action="store_true")
+    backup_args()
     args = argparser.parse_args()
 
     if args.gui:
-        import gui
-        gui.main()
+        from gui import main
     else:
-        import backup
-        backup.main(args.path, args.config)
+        from gui import main
+    main(args)
     exit()
 
 APP_FILES: str

@@ -1,5 +1,27 @@
-def main(target_path: str | None, config_path: str | None) -> None:
-    from utils import path, HOME, CONFIG, error, read, write, typing
+from argparse import Namespace
+
+def backup_args() -> None:
+    """Add the arguments for backup"""
+    from utils import argparser
+    argparser.add_argument("--path")
+    argparser.add_argument("--config")
+    argparser.add_argument("profile", required=False)
+
+def main(args: Namespace) -> None:
+    def call_main(profile: str) -> None:
+        _main(args.path, args.config, profile)
+    if args.profile:
+        call_main(args.profile)
+    else:
+        from os import listdir
+        from utils import PROFILES
+        for profile in listdir(PROFILES):
+            print("Backing up profile: " + profile)
+            call_main(profile)
+            print()
+
+def _main(target_path: str | None, config_path: str | None, profile: str) -> None:
+    from utils import path, HOME, CONFIG, PROFILES, load_options, error, read, write, typing
     import json
     import pyudev
     import shell_utils
@@ -11,19 +33,36 @@ def main(target_path: str | None, config_path: str | None) -> None:
     from glob import glob
     from last_backup import update_last
 
-    # get config_path
-    print("Retrievieng configuration file")
-    if config_path is None:
-        config_path = path.join(CONFIG, "config.json")
-
     # get config
-    SEEK_HELP = "\nUse \"borxplo guide\" to get help creating a config file"
-    try:
-        config = json.loads(read(config_path))
-    except json.JSONDecodeError as e:
-        error("JSON decoder exited with error: " + e.msg + SEEK_HELP)
-    if type(config) is not dict:
-        error("borXplo.json was not a json object!" + SEEK_HELP)
+    print("Retrievieng configuration file")
+    def is_dict(d) -> typing.TypeIs[dict]:
+        return type(d) is dict
+    def json_error(name: str) -> typing.Never:
+        error(error(name + ".json was not a json object!"))
+    GLOBAL = path.join(CONFIG, "global.json")
+    global_opts = None
+    if path.exists(GLOBAL):
+        global_opts = load_options(GLOBAL)
+        if not is_dict(global_opts):
+            json_error("global")
+    config = load_options(path.join(PROFILES, profile, "config.json") if config_path is None else config_path)
+    if not is_dict(config):
+        json_error("config")
+    if global_opts:
+        def merge(a: dict, b: dict) -> None:
+            for key, value in b.items():
+                if type(a[key]) is not type(value):
+                    error(f"The types of the key '{key}' in global and '{profile}' configurations don't match")
+                if key in a:
+                    if type(value) is list:
+                        a[key] = a[key] + value
+                        continue
+                    elif type(value) is dict:
+                        merge(a[key], value)
+                        continue
+                a[key] = value
+        merge(global_opts, config)
+        config = global_opts
 
     T = typing.TypeVar("T")
     def option(key: str, typ: typing.Type[T], d: dict = config) -> T | None:
@@ -77,7 +116,7 @@ def main(target_path: str | None, config_path: str | None) -> None:
                 break
         if not target_path:
             error(f"It was not possible to mount {device_node}\nMake sure that {
-                f"'{target_label}' points to" # pyright: ignore[reportPossiblyUnboundVariable, reportOperatorIssue]
+                f"'{target_label}' points to" # pyright: ignore[reportPossiblyUnboundVariable]
                 if target_node is None else
                 f"'{target_node}' is"
                 } a valid device")

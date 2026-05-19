@@ -1,4 +1,6 @@
-def main() -> None:
+from argparse import Namespace
+
+def main(args: Namespace) -> None:
     import tkinter as tk
     from tkinter import ttk
     import backup
@@ -15,7 +17,7 @@ def main() -> None:
 
     def start() -> None:
         root.destroy()
-        backup.main()
+        backup.main(args)
     ttk.Button(btn_frame, text="Start", command=start).pack(anchor="center", side="left", padx=10)
     ttk.Button(btn_frame, text="Cancel", command=root.destroy).pack(anchor="center", side="right", padx=10)
 

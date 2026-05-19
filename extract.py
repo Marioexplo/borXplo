@@ -1,5 +1,5 @@
 def main() -> None:
-    from utils import argparser, error, path, read
+    from utils import argparser, error, path, load_options
     from sys import exit
     import json
     from subprocess import run
@@ -15,10 +15,7 @@ def main() -> None:
     if not path.isdir(repo):
         error("A reposiroty can't be a file!")
 
-    try:
-        gits = json.loads(read(path.join(repo, "git_directories")))
-    except json.JSONDecodeError as e:
-        error("JSON decoder exited with error while reading git_directories: " + e.msg)
+    gits = load_options(path.join(repo, "git_directories"))
     if not (type(gits) is list and all(type(i) is str for i in gits)):
         gits = False
         print("git_directories did not contain a list of strings")
