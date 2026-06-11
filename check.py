@@ -13,7 +13,7 @@ def main() -> None:
         from gui import main as _main
         import utils
         from typing import Never
-        from shell_utils import cmd_exists
+        from backup_utils import cmd_exists
         from subprocess import run
         from sys import exit
         def gui_error(text: str) -> Never:

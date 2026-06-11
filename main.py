@@ -1,7 +1,7 @@
-from shell_utils import cmd_exists
-from utils import argparser, path, error, HOME, exit
+from backup_utils import cmd_exists
+from utils import argparser, path, error, HOME, exit, call_main, PROFILES
 from sys import argv, _MEIPASS as APP_FILES  # pyright: ignore[reportAttributeAccessIssue]
-from backup import backup_args
+import backup
 import os
 
 if not cmd_exists("borg"):
@@ -10,14 +10,9 @@ if not cmd_exists("borg"):
 del argv[0]
 if len(argv) == 1 or argv[0][:2] == "--" and argv[0] != "--help":
     argparser.add_argument("--gui", action="store_true")
-    backup_args()
+    backup.backup_args()
     args = argparser.parse_args()
-
-    if args.gui:
-        from gui import main
-    else:
-        from gui import main
-    main(args)
+    call_main(lambda profile: backup.main(args.path, args.config, profile), PROFILES, "Backing up", args)
     exit()
 
 APP_FILES: str
@@ -59,7 +54,11 @@ match argv.pop(0):
 
     case "extract":
         import extract
-        extract.main()
+        argparser.add_argument("--progress", action="store_true")
+        argparser.add_argument("repo", required=True)
+        argparser.add_argument("profile", required=False)
+        args = argparser.parse_args()
+        call_main(lambda profile: extract.main(args.repo, args.progress, profile), args.repo, "Extracting", args)
 
     case "-h" | "--help" | "help":
         with open(path.join(APP_FILES, "help.txt")) as help:

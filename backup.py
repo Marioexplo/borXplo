@@ -1,5 +1,3 @@
-from argparse import Namespace
-
 def backup_args() -> None:
     """Add the arguments for backup"""
     from utils import argparser
@@ -7,100 +5,95 @@ def backup_args() -> None:
     argparser.add_argument("--config")
     argparser.add_argument("profile", required=False)
 
-def main(args: Namespace) -> None:
-    def call_main(profile: str) -> None:
-        _main(args.path, args.config, profile)
-    if args.profile:
-        call_main(args.profile)
-    else:
-        from os import listdir
-        from utils import PROFILES
-        for profile in listdir(PROFILES):
-            print("Backing up profile: " + profile)
-            call_main(profile)
-            print()
-
-def _main(target_path: str | None, config_path: str | None, profile: str) -> None:
-    from utils import path, HOME, CONFIG, PROFILES, load_options, error, read, write, typing
-    import json
+def main(target_path: str | None, config_path: str | None, profile: str) -> None:
+    from utils import path, HOME, CONFIG, PROFILES, error, read, write
+    from backup_utils import borg, cmd_exists, env, load_config, RepoInfo, dataclass, beartype
     import pyudev
-    import shell_utils
-    from shell_utils import borg, cmd_exists, env
+    import backup_utils
     import subprocess
     import os
     from datetime import datetime
     import locale
     from glob import glob
+    import json
     from last_backup import update_last
 
     # get config
     print("Retrievieng configuration file")
-    def is_dict(d) -> typing.TypeIs[dict]:
-        return type(d) is dict
-    def json_error(name: str) -> typing.Never:
-        error(error(name + ".json was not a json object!"))
+    @beartype
+    @dataclass
+    class Config():
+        @beartype
+        @dataclass
+        class Repo():
+            path: str
+            include: list[str] | None = None
+            exclude: list[str] | None = None
+            patterns: list[str] | None = None
+            git: bool = False
+            directories: list[str] | None = None
+
+        repos: list[Repo]
+        target_label: str | None = None
+        only_usb: bool = False
+        target_node: str | None = None
+        directory: str | None = None
+        quota: float | None = None
+        check: bool = True
+        full_check: int | None = None
+        progress: bool = False
+        stats: bool = False
+        compression: str | None = None
+        max_archives: int | None = None
+        unmount: bool = False
+
     GLOBAL = path.join(CONFIG, "global.json")
-    global_opts = None
+    config = load_config(path.join(PROFILES, profile, "config.json") if config_path is None else config_path, Config)
     if path.exists(GLOBAL):
-        global_opts = load_options(GLOBAL)
-        if not is_dict(global_opts):
-            json_error("global")
-    config = load_options(path.join(PROFILES, profile, "config.json") if config_path is None else config_path)
-    if not is_dict(config):
-        json_error("config")
-    if global_opts:
-        def merge(a: dict, b: dict) -> None:
+        global_opts = load_config(GLOBAL, Config)
+        def merge(a: dict, b: dict) -> dict:
             for key, value in b.items():
-                if type(a[key]) is not type(value):
-                    error(f"The types of the key '{key}' in global and '{profile}' configurations don't match")
-                if key in a:
-                    if type(value) is list:
+                if type(a[key]) is not None:
+                    value_type = type(value)
+                    if value_type is None:
+                        continue
+                    if value_type is list:
                         a[key] = a[key] + value
                         continue
-                    elif type(value) is dict:
+                    elif value_type is dict:
                         merge(a[key], value)
                         continue
                 a[key] = value
-        merge(global_opts, config)
-        config = global_opts
-
-    T = typing.TypeVar("T")
-    def option(key: str, typ: typing.Type[T], d: dict = config) -> T | None:
-        if key not in d:
-            return None
-        if type(d[key]) is typ:
-            return d[key]
-        error(f"{key} must be of  type '{typ}'")
+            return a
+        config = Config(**merge(global_opts.__dict__, config.__dict__))
 
     # get storage device
     print("Searching for target device")
     device_node: str | None = None
     if target_path is None:
         device_database = pyudev.Context()
-        target_node = option("target_node", str)
-        if target_node is None:
-            target_label = option("target_label", str)
-            if target_label is None:
+        if config.target_node is None:
+            if config.target_label is None:
                 error("target_label or target_node must be set to find your device")
             devices: list[pyudev.Device] = list()
             key = "ID_FS_LABEL"
             storages = device_database.list_devices(subsystem="block")
-            if option("only_usb", bool):
+            if config.only_usb:
                 storages = [i for i in storages if i.find_parent(subsystem="usb")]
             for storage in storages:
-                if key in storage.properties and storage.properties[key] == target_label:
+                if key in storage.properties and storage.properties[key] == config.target_label:
                     devices.append(storage)
             if len(devices) == 1:
                 device_node = devices[0].device_node
             else:
-                error(f"No device named '{target_label}' was found"
+                error(f"No device named '{config.target_label}' was found"
                       if len(devices) == 0 else
-                      f"More than one device labelled '{target_label}' was found\nDisconnect one or change its label")
+                      f"More than one device labelled '{config.target_label}' was found\nDisconnect one or change its label")
         else:
             try:
-                device_node = pyudev.Devices.from_device_file(device_database, target_node).device_node
+                device_node = pyudev.Devices.from_device_file(device_database, config.target_node).device_node
             except pyudev.DeviceNotFoundError:
-                error("No device was found at " + target_node)
+                error("No device was found at " + config.target_node)
 
         # get device path to write
         if type(device_node) is not str:
@@ -116,9 +109,9 @@ def _main(target_path: str | None, config_path: str | None, profile: str) -> Non
                 break
         if not target_path:
             error(f"It was not possible to mount {device_node}\nMake sure that {
-                f"'{target_label}' points to" # pyright: ignore[reportPossiblyUnboundVariable]
-                if target_node is None else
-                f"'{target_node}' is"
+                f"'{config.target_label}' points to"
+                if config.target_node is None else
+                f"'{config.target_node}' is"
                 } a valid device")
     print("Target device configured")
 
@@ -126,149 +119,115 @@ def _main(target_path: str | None, config_path: str | None, profile: str) -> Non
         return path.join(target_path, relative)  # pyright: ignore[reportCallIssue, reportArgumentType]
 
     print("Preparing for the backup process")
-    target_directory = option("directory", str)
-    if target_directory is not None:
-        target_path = path_in_target(target_directory)
+    if config.directory is not None:
+        target_path = path_in_target(config.directory)
         if not path.isdir(target_path):
-            error(target_directory + " was not a directory inside the target")
+            error(config.directory + " was not a directory inside the target")
+    target_path = path_in_target(profile)
 
     # configure repo
     print("Configuring backup repository")
-    if option("progress", bool):
-        shell_utils.borg_cmd.append("--progress")
+    if config.progress:
+        backup_utils.borg_cmd.append("--progress")
+    REPO_CONFIG_PATH = path_in_target("config.json")
+    repo_config = load_config(REPO_CONFIG_PATH, RepoInfo)
     repo_path = path_in_target("repo")
-    quota = option("quota", float)
-    quota_exists = quota is not None
+    quota_exists = config.quota is not None
     quota_config = path_in_target("quota")
     def set_repo_quota() -> None:
-        write(quota_config, str(quota))
+        write(quota_config, str(config.quota))
     if path.exists(repo_path):
         # integrity checks
-        check = option("check", bool)
-        full_check = option("full_check", int)
-        if full_check:
+        if config.full_check:
             FULL_COUNT = path.join(CONFIG, "full_count")
-            if path.exists(FULL_COUNT) and int(read(FULL_COUNT)) >= full_check:
+            if path.exists(FULL_COUNT) and int(read(FULL_COUNT)) >= config.full_check:
                 borg(["check", "--verify-data", repo_path])
                 write(FULL_COUNT, "0")
             else:
-                write(FULL_COUNT, str(full_check + 1))
-        elif check is None or check:
+                write(FULL_COUNT, str(config.full_check + 1))
+        elif config.check:
             borg(["check", repo_path])
 
-        repo_quota = None
-        if path.exists(quota_config):
-            try:
-                repo_quota = float(read(quota_config))
-            except ValueError:
-                print("The repo's quota file held a value that could not be parsed")
         def change_quota(quota)->None:
             borg(["config", repo_path, "storage_quota", f"{quota}G"])
             print("New repository quota set")
         if quota_exists:
-            if not repo_quota or quota != repo_quota:
-                change_quota(quota)
+            if not repo_config.quota or config.quota != repo_config.quota:
+                change_quota(config.quota)
                 set_repo_quota()
-        elif repo_quota:
+        elif repo_config.quota:
             change_quota(0)
             os.remove(quota_config)
         print("Repository configured")
     else:
         initializer = ["init", "-e", "none", repo_path]
         if quota_exists:
-            initializer += ["--storage-quota", f"{quota}G"]
+            initializer += ["--storage-quota", f"{config.quota}G"]
             set_repo_quota()
         borg(initializer)
         print("Repository initialized")
 
     # read repos
     print("Reading repos")
-    compression = option("compression", str)
     locale.setlocale(locale.LC_TIME, "")
     now = datetime.now()
-    backup_cmd = ["create", "-C", "lz4" if compression is None else compression]
-    if option("stats", bool):
+    backup_cmd = ["create", "-C", "lz4" if config.compression is None else config.compression]
+    if config.stats:
         backup_cmd.append("-s")
     backup_cmd.append(f"{repo_path}::{now.strftime("%x").replace("/", ".")}-{now.strftime("%H.%M.%S")}")
     gits: list[str] = list()
 
-    repos = option("repos", list)
-    if not repos:
-        error("'repos' must be set to backup your repositories")
     pattern_args: list[str] = list()
-    S = typing.TypeVar("S")
-    def backup(repo)->None:
+    def backup(repo: Config.Repo)->None:
         nonlocal backup_cmd, pattern_args
-        if type(repo) is not dict:
-            error(f"Repo number {repos.index(repo) + 1} is not a dictionary")
-
-        def repo_option(key: str, typ: typing.Type[S]) -> S | None:
-            return option(key, typ, repo)
-        def get_list(key: str)->list[str]|None:
-            lis = repo_option(key, list)
-            if lis is None:
-                return None
-            if all(type(i) is str for i in lis):
-                return lis
-            error(f"An item in a '{key}' list was not of type str")
 
         # get path
-        repo_path = repo_option("path", str)
-        if not repo_path:
-            error("A 'path' value must be defined for each archive")
-        repo_path = path.realpath(path.join(HOME, repo_path))
+        repo_path = path.realpath(path.join(HOME, repo.path))
 
         # directories feature
-        directories = get_list("directories")
-        if directories:
-            del repo["directories"]
-            for dir in directories:
-                dir = path.join(repo_path, dir)
-                if not path.isdir(dir):
-                    error(f"A path in 'directories' of the repo with path '{repo_path}' was not a directory")
-                new_repo = dict(repo)
-                new_repo["path"] = dir
-                backup(new_repo)
+        if repo.directories:
+            dirs = repo.directories
+            repo.directories = None
+            for dir in dirs:
+                repo.path = path.join(repo_path, dir)
+                backup(repo)
             return
 
-        include = get_list("include")
-        git = repo_option("git", bool)  # pyright: ignore[reportGeneralTypeIssues]
-        exclude = get_list("exclude")
-        patterns = get_list("patterns")
-        if include:
-            for glob_path in include:
+        if repo.include:
+            for glob_path in repo.include:
                 backup_cmd += [path.realpath(p) for p in glob(path.join(repo_path, glob_path))]
-        elif exclude or patterns or not git:
+        elif repo.exclude or repo.patterns or not repo.git:
             backup_cmd.append(repo_path)
-        if git:
+        if repo.git:
             backup_cmd.append(path.join(repo_path, ".git"))
             gits.append(repo_path)
-        if exclude:
-            for pattern in exclude:
+        if repo.exclude:
+            for pattern in repo.exclude:
                 pattern_args += ["-e", path.join(repo_path, pattern)]
-        if patterns:
-            for pattern in patterns:
+        if repo.patterns:
+            for pattern in repo.patterns:
                 action, dd, pattern = pattern.partition(":")
                 if not dd:
                     error("':' wasn't found in the pattern of the repo with path " + repo_path)
                 pattern_args += ["--pattern", action + dd + path.join(repo_path, pattern)]
-    for repo in repos:
+    for repo in config.repos:
         backup(repo)
     print("Backing up...")
     borg(backup_cmd + pattern_args)
+
     # git directories
-    write(path_in_target("git_directories"), json.dumps(gits))
+    repo_config.gits = gits
+    write(REPO_CONFIG_PATH, json.dumps(repo_config))
     print("Backup completed")
 
     # compact repo
-    max_archives = option("max_archives", int)
-    if max_archives is not None:
+    if config.max_archives is not None:
         archives_number = borg(["list", "--short", repo_path],
                                capture_output=True, text=True
                                ).stdout.count("\n")
-        if archives_number > max_archives:
+        if archives_number > config.max_archives:
             print("Compacting repository")
-            borg(["delete", repo_path, "--first", str(archives_number - max_archives)])
+            borg(["delete", repo_path, "--first", str(archives_number - config.max_archives)])
             borg(["compact", repo_path])
 
     update_last()
@@ -278,15 +237,14 @@ def _main(target_path: str | None, config_path: str | None, profile: str) -> Non
     if device_node:
         def unmount() -> None:
             subprocess.run(["udisksctl", "unmount", "-b", device_node], stdout=subprocess.DEVNULL, env=env)
-            print(f"Device {device_node if target_node else target_label} unmounted") # pyright: ignore[reportPossiblyUnboundVariable]
-        must_unmount = option("unmount", bool)
+            print(f"Device {device_node if config.target_node else config.target_label} unmounted")
         if cmd_exists("notify-send"):
             notify_cmd = ["notify-send",
                 "Backup completed", "borXplo has completed the backup process.",
                 "-a", "borXplo",
                 "-i", "drive-removable-media"
             ]
-            if must_unmount:
+            if config.unmount:
                 unmount()
                 notify_cmd[2] += "\nThe media can now be removed."
                 subprocess.run(notify_cmd, env=env)
@@ -299,5 +257,5 @@ def _main(target_path: str | None, config_path: str | None, profile: str) -> Non
                     pass
                 if notify_action:
                     unmount()
-        elif must_unmount:
+        elif config.unmount:
             unmount()
