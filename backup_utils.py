@@ -38,4 +38,5 @@ def load_config(path: str, cls: typing.Type[_T]) -> _T:
 @dataclass
 class RepoInfo():
     gits: list[str]
+    root: bool
     quota: float | None = None

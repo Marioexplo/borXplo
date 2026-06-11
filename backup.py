@@ -45,6 +45,7 @@ def main(target_path: str | None, config_path: str | None, profile: str) -> None
         stats: bool = False
         compression: str | None = None
         max_archives: int | None = None
+        root: bool = False
         unmount: bool = False
 
     GLOBAL = path.join(CONFIG, "global.json")
@@ -158,6 +159,12 @@ def main(target_path: str | None, config_path: str | None, profile: str) -> None
         elif repo_config.quota:
             change_quota(0)
             os.remove(quota_config)
+
+        if config.root != repo_config.root:
+            error("""You should not mix backups read from ~ and /
+If you need to back up some files from root, either delete this repo first or create another profile for those files""")
+        os.chdir("/" if config.root else HOME)
+
         print("Repository configured")
     else:
         initializer = ["init", "-e", "none", target_path]
@@ -165,7 +172,7 @@ def main(target_path: str | None, config_path: str | None, profile: str) -> None
             initializer += ["--storage-quota", f"{config.quota}G"]
             set_repo_quota()
         borg(initializer)
-        repo_config = RepoInfo([])
+        repo_config = RepoInfo([], config.root)
         print("Repository initialized")
 
     # read repos
@@ -183,7 +190,7 @@ def main(target_path: str | None, config_path: str | None, profile: str) -> None
         nonlocal backup_cmd, pattern_args
 
         # get path
-        repo_path = path.realpath(path.join(HOME, repo.path))
+        repo_path = path.realpath(repo.path)
 
         # directories feature
         if repo.directories:
@@ -216,7 +223,7 @@ def main(target_path: str | None, config_path: str | None, profile: str) -> None
     print("Backing up...")
     borg(backup_cmd + pattern_args)
 
-    # git directories
+    # repo config
     repo_config.gits = gits
     write(REPO_CONFIG_PATH, json.dumps(repo_config))
     print("Backup completed")

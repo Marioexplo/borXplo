@@ -24,6 +24,9 @@ def main(repo: str, progress: bool | None) -> None:
 
     if progress:
         backup_utils.borg_cmd.append("--progress")
+    if config.root:
+        backup_utils.borg_cmd.insert(0, "sudo")
+        print("The root_extract option was used with this repository\nYou may be asked to insert your password")
     backup_utils.borg(["extract", path.abspath(repo) + "::" + archive], cwd="/")
 
     if config.gits:
