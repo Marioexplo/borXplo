@@ -1,4 +1,4 @@
-def main(repo: str, progress: bool | None, profile: str) -> None:
+def main(repo: str, progress: bool | None) -> None:
     from utils import error, path
     from sys import exit
     import json
@@ -10,13 +10,12 @@ def main(repo: str, progress: bool | None, profile: str) -> None:
     if not path.isdir(repo):
         error("A repository can't be a file!")
 
-    config = backup_utils.load_config(path.join(repo, "config.json"), backup_utils.RepoInfo)
+    config = backup_utils.load_config(path.join(repo, "borXplo.json"), backup_utils.RepoInfo)
 
     print("Info about the repository that is about to be extracted:")
-    borg_repo = path.join(repo, "repo")
-    backup_utils.borg(["info", borg_repo])
+    backup_utils.borg(["info", repo])
 
-    info = run(["borg", "info", borg_repo, "--last", "1", "--json"], capture_output=True, text=True, env=backup_utils.env)
+    info = run(["borg", "info", repo, "--last", "1", "--json"], capture_output=True, text=True, env=backup_utils.env)
     if info.returncode != 0:
         print(info.stderr)
         print("Borg exited with error")
@@ -25,7 +24,7 @@ def main(repo: str, progress: bool | None, profile: str) -> None:
 
     if progress:
         backup_utils.borg_cmd.append("--progress")
-    backup_utils.borg(["extract", path.abspath(borg_repo) + "::" + archive], cwd="/")
+    backup_utils.borg(["extract", path.abspath(repo) + "::" + archive], cwd="/")
 
     if config.gits:
         for git in config.gits:

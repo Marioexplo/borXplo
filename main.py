@@ -58,7 +58,7 @@ match argv.pop(0):
         argparser.add_argument("repo", required=True)
         argparser.add_argument("profile", required=False)
         args = argparser.parse_args()
-        call_main(lambda profile: extract.main(args.repo, args.progress, profile), args.repo, "Extracting", args)
+        call_main(lambda profile: extract.main(path.join(args.repo, profile), args.progress), args.repo, "Extracting", args)
 
     case "-h" | "--help" | "help":
         with open(path.join(APP_FILES, "help.txt")) as help:

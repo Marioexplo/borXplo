@@ -48,7 +48,7 @@ def main(target_path: str | None, config_path: str | None, profile: str) -> None
         unmount: bool = False
 
     GLOBAL = path.join(CONFIG, "global.json")
-    config = load_config(path.join(PROFILES, profile, "config.json") if config_path is None else config_path, Config)
+    config = load_config(path.join(PROFILES, profile + ".json") if config_path is None else config_path, Config)
     if path.exists(GLOBAL):
         global_opts = load_config(GLOBAL, Config)
         def merge(a: dict, b: dict) -> dict:
@@ -129,27 +129,27 @@ def main(target_path: str | None, config_path: str | None, profile: str) -> None
     print("Configuring backup repository")
     if config.progress:
         backup_utils.borg_cmd.append("--progress")
-    REPO_CONFIG_PATH = path_in_target("config.json")
-    repo_config = load_config(REPO_CONFIG_PATH, RepoInfo)
-    repo_path = path_in_target("repo")
+    REPO_CONFIG_PATH = path_in_target("borXplo.json")
     quota_exists = config.quota is not None
     quota_config = path_in_target("quota")
     def set_repo_quota() -> None:
         write(quota_config, str(config.quota))
-    if path.exists(repo_path):
+    if path.exists(target_path):
         # integrity checks
         if config.full_check:
-            FULL_COUNT = path.join(CONFIG, "full_count")
+            FULL_COUNT = path.join(CONFIG, "check_counts", profile)
             if path.exists(FULL_COUNT) and int(read(FULL_COUNT)) >= config.full_check:
-                borg(["check", "--verify-data", repo_path])
+                borg(["check", "--verify-data", target_path])
                 write(FULL_COUNT, "0")
             else:
                 write(FULL_COUNT, str(config.full_check + 1))
         elif config.check:
-            borg(["check", repo_path])
+            borg(["check", target_path])
+
+        repo_config = load_config(REPO_CONFIG_PATH, RepoInfo)
 
         def change_quota(quota)->None:
-            borg(["config", repo_path, "storage_quota", f"{quota}G"])
+            borg(["config", target_path, "storage_quota", f"{quota}G"])
             print("New repository quota set")
         if quota_exists:
             if not repo_config.quota or config.quota != repo_config.quota:
@@ -160,11 +160,12 @@ def main(target_path: str | None, config_path: str | None, profile: str) -> None
             os.remove(quota_config)
         print("Repository configured")
     else:
-        initializer = ["init", "-e", "none", repo_path]
+        initializer = ["init", "-e", "none", target_path]
         if quota_exists:
             initializer += ["--storage-quota", f"{config.quota}G"]
             set_repo_quota()
         borg(initializer)
+        repo_config = RepoInfo([])
         print("Repository initialized")
 
     # read repos
@@ -174,7 +175,7 @@ def main(target_path: str | None, config_path: str | None, profile: str) -> None
     backup_cmd = ["create", "-C", "lz4" if config.compression is None else config.compression]
     if config.stats:
         backup_cmd.append("-s")
-    backup_cmd.append(f"{repo_path}::{now.strftime("%x").replace("/", ".")}-{now.strftime("%H.%M.%S")}")
+    backup_cmd.append(f"{target_path}::{now.strftime("%x").replace("/", ".")}-{now.strftime("%H.%M.%S")}")
     gits: list[str] = list()
 
     pattern_args: list[str] = list()
@@ -222,13 +223,13 @@ def main(target_path: str | None, config_path: str | None, profile: str) -> None
 
     # compact repo
     if config.max_archives is not None:
-        archives_number = borg(["list", "--short", repo_path],
+        archives_number = borg(["list", "--short", target_path],
                                capture_output=True, text=True
                                ).stdout.count("\n")
         if archives_number > config.max_archives:
             print("Compacting repository")
-            borg(["delete", repo_path, "--first", str(archives_number - config.max_archives)])
-            borg(["compact", repo_path])
+            borg(["delete", target_path, "--first", str(archives_number - config.max_archives)])
+            borg(["compact", target_path])
 
     update_last()
     print("Your files have been successfully backed up")
