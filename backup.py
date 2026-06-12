@@ -50,6 +50,7 @@ def _main(target_path: str | None, config_path: str | None, profile: str) -> Non
             patterns: list[str] | None = None
             git: bool = False
             directories: list[str] | None = None
+            base: str | None = None
 
         repos: list[Repo]
         target_label: str | None = None
@@ -65,25 +66,27 @@ def _main(target_path: str | None, config_path: str | None, profile: str) -> Non
         max_archives: int | None = None
         root: bool = False
         unmount: bool = False
+        bases: dict[str, Repo] = {}
+
+    def merge(a: dict, b: dict) -> dict:
+        for key, value in b.items():
+            if type(a[key]) is not None:
+                value_type = type(value)
+                if value_type is None:
+                    continue
+                if value_type is list:
+                    a[key] = a[key] + value
+                    continue
+                elif value_type is dict:
+                    merge(a[key], value)
+                    continue
+            a[key] = value
+        return a
 
     GLOBAL = path.join(CONFIG, "global.json")
     config = load_config(path.join(PROFILES, profile + ".json") if config_path is None else config_path, Config)
     if path.exists(GLOBAL):
         global_opts = load_config(GLOBAL, Config)
-        def merge(a: dict, b: dict) -> dict:
-            for key, value in b.items():
-                if type(a[key]) is not None:
-                    value_type = type(value)
-                    if value_type is None:
-                        continue
-                    if value_type is list:
-                        a[key] = a[key] + value
-                        continue
-                    elif value_type is dict:
-                        merge(a[key], value)
-                        continue
-                a[key] = value
-            return a
         config = Config(**merge(global_opts.__dict__, config.__dict__))
 
     # get storage device
@@ -209,6 +212,14 @@ If you need to back up some files from root, either delete this repo first or cr
 
         # get path
         repo_path = path.realpath(repo.path)
+
+        # base feature
+        if repo.base:
+            if repo.base in config.bases:
+                base = config.bases[repo.base]
+                repo = Config.Repo(**merge(repo.__dict__, base.__dict__))
+            else:
+                error(f"Base '{repo.base}' doesn't exist")
 
         # directories feature
         if repo.directories:
