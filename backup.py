@@ -51,6 +51,7 @@ def _main(target_path: str | None, config_path: str | None, profile: str) -> Non
             git: bool = False
             directories: list[str] | None = None
             base: str | None = None
+            cmd: list[str] | None = None
 
         repos: list[Repo]
         target_label: str | None = None
@@ -193,7 +194,7 @@ If you need to back up some files from root, either delete this repo first or cr
             initializer += ["--storage-quota", f"{config.quota}G"]
             set_repo_quota()
         borg(initializer)
-        repo_config = RepoInfo([], config.root)
+        repo_config = RepoInfo([], config.root, {})
         print("Repository initialized")
 
     # read repos
@@ -204,9 +205,10 @@ If you need to back up some files from root, either delete this repo first or cr
     if config.stats:
         backup_cmd.append("-s")
     backup_cmd.append(f"{target_path}::{now.strftime("%x").replace("/", ".")}-{now.strftime("%H.%M.%S")}")
-    gits: list[str] = list()
+    gits: list[str] = []
+    cmds: dict[str, list[str]] = {}
 
-    pattern_args: list[str] = list()
+    pattern_args: list[str] = []
     def backup(repo: Config.Repo)->None:
         nonlocal backup_cmd, pattern_args
 
@@ -220,6 +222,10 @@ If you need to back up some files from root, either delete this repo first or cr
                 repo = Config.Repo(**merge(repo.__dict__, base.__dict__))
             else:
                 error(f"Base '{repo.base}' doesn't exist")
+
+        # cmd feature
+        if repo.cmd:
+            cmds[repo_path] = repo.cmd
 
         # directories feature
         if repo.directories:
@@ -254,6 +260,7 @@ If you need to back up some files from root, either delete this repo first or cr
 
     # repo config
     repo_config.gits = gits
+    repo_config.cmds = cmds
     write(REPO_CONFIG_PATH, json.dumps(repo_config))
     print("Backup completed")
 

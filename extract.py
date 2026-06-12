@@ -22,6 +22,7 @@ def main(repo: str, progress: bool | None) -> None:
         exit(info.returncode)
     archive: str = json.loads(info.stdout)["archives"][0]["name"]
 
+    print("Extracting...")
     if progress:
         backup_utils.borg_cmd.append("--progress")
     if config.root:
@@ -29,8 +30,12 @@ def main(repo: str, progress: bool | None) -> None:
         print("The root_extract option was used with this repository\nYou may be asked to insert your password")
     backup_utils.borg(["extract", path.abspath(repo) + "::" + archive], cwd="/")
 
-    if config.gits:
-        for git in config.gits:
-            run(["git", "restore", "."], env=backup_utils.env, cwd=git)
+    print("Restoring git repositories")
+    for git in config.gits:
+        run(["git", "restore", "."], env=backup_utils.env, cwd=git)
+
+    print("Executing custom commands")
+    for dir, cmd in config.cmds.items():
+        run(";".join(cmd), shell=True, env=backup_utils.env, cwd=dir)
 
     print("Extraction successfully completed")
