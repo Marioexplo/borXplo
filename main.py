@@ -1,5 +1,5 @@
 from backup_utils import cmd_exists
-from utils import argparser, path, error, HOME, exit, call_main
+from utils import argparser, path, error, HOME, call_main
 from sys import argv, _MEIPASS as APP_FILES  # pyright: ignore[reportAttributeAccessIssue]
 import backup
 import os
@@ -8,15 +8,16 @@ if not cmd_exists("borg"):
     error("Borg was not found. Install it before using borXplo")
 
 del argv[0]
-if len(argv) == 1 or argv[0][:2] == "--" and argv[0] != "--help":
-    argparser.add_argument("--gui", action="store_true")
-    backup.backup_args()
-    args = argparser.parse_args()
-    (backup.notify if args.gui else backup.main)(args)
-    exit()
+if len(argv) == 0:
+    error("No command was given\nUse 'borxplo help' to get the list of commands and options")
 
 APP_FILES: str
 match argv.pop(0):
+    case "backup":
+        argparser.add_argument("--gui", action="store_true")
+        backup.backup_args()
+        args = argparser.parse_args()
+        (backup.notify if args.gui else backup.main)(args)
     case "automatic":
         from utils import AUTOMATIC, write
         if len(argv) == 2:
