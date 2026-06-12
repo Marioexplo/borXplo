@@ -215,11 +215,16 @@ If you need to back up some files from root, either delete this repo first or cr
         # get path
         repo_path = path.realpath(repo.path)
 
+        # .borxplo feature
+        dot_config = path.join(repo_path, ".borxplo.json")
+        if path.isfile(dot_config):
+            repo = Config.Repo(**merge(repo.__dict__, load_config(dot_config, Config.Repo).__dict__))
+
         # base feature
         if repo.base:
             if repo.base in config.bases:
                 base = config.bases[repo.base]
-                repo = Config.Repo(**merge(repo.__dict__, base.__dict__))
+                repo = Config.Repo(**merge(base.__dict__, repo.__dict__))
             else:
                 error(f"Base '{repo.base}' doesn't exist")
 
