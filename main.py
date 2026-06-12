@@ -1,5 +1,5 @@
 from backup_utils import cmd_exists
-from utils import argparser, path, error, HOME, exit, call_main, PROFILES
+from utils import argparser, path, error, HOME, exit, call_main
 from sys import argv, _MEIPASS as APP_FILES  # pyright: ignore[reportAttributeAccessIssue]
 import backup
 import os
@@ -12,7 +12,7 @@ if len(argv) == 1 or argv[0][:2] == "--" and argv[0] != "--help":
     argparser.add_argument("--gui", action="store_true")
     backup.backup_args()
     args = argparser.parse_args()
-    call_main(lambda profile: backup.main(args.path, args.config, profile), PROFILES, "Backing up", args)
+    (backup.notify if args.gui else backup.main)(args)
     exit()
 
 APP_FILES: str

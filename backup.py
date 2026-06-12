@@ -1,3 +1,6 @@
+from utils import Namespace
+from backup_utils import cmd_exists
+
 def backup_args() -> None:
     """Add the arguments for backup"""
     from utils import argparser
@@ -5,9 +8,24 @@ def backup_args() -> None:
     argparser.add_argument("--config")
     argparser.add_argument("profile", required=False)
 
-def main(target_path: str | None, config_path: str | None, profile: str) -> None:
+def main(args: Namespace) -> None:
+    from utils import call_main, PROFILES
+    call_main(lambda profile: _main(args.path, args.config, profile), PROFILES, "Backing up", args)
+
+notifier_exists = cmd_exists("notify-send")
+NOTIFY_FLAGS = ["-a", "borXplo", "-i", "drive-removable-media"]
+def notify(args: Namespace) -> None:
+    from subprocess import run
+    if (
+        run(["notify-send", "It's time to back up your data!", "-A", "Back up"] + NOTIFY_FLAGS).stdout
+        if args.gui and notifier_exists else
+        input("It's time to back up your data!\nBack up now? [Y/n] ").lower() == "y"
+    ):
+        main(args)
+
+def _main(target_path: str | None, config_path: str | None, profile: str) -> None:
     from utils import path, HOME, CONFIG, PROFILES, error, read, write
-    from backup_utils import borg, cmd_exists, env, load_config, RepoInfo, dataclass, beartype
+    from backup_utils import borg, env, load_config, RepoInfo, dataclass, beartype
     import pyudev
     import backup_utils
     import subprocess
@@ -246,24 +264,15 @@ If you need to back up some files from root, either delete this repo first or cr
         def unmount() -> None:
             subprocess.run(["udisksctl", "unmount", "-b", device_node], stdout=subprocess.DEVNULL, env=env)
             print(f"Device {device_node if config.target_node else config.target_label} unmounted")
-        if cmd_exists("notify-send"):
-            notify_cmd = ["notify-send",
-                "Backup completed", "borXplo has completed the backup process.",
-                "-a", "borXplo",
-                "-i", "drive-removable-media"
-            ]
+        if notifier_exists:
+            notify_cmd = ["notify-send", "Backup completed", "borXplo has completed the backup process."] + NOTIFY_FLAGS
             if config.unmount:
                 unmount()
                 notify_cmd[2] += "\nThe media can now be removed."
                 subprocess.run(notify_cmd, env=env)
             else:
                 notify_cmd += ["-A", "Unmount media", "-t", "7000"]
-                notify_action = False
-                try:
-                    notify_action = subprocess.run(notify_cmd, capture_output=True, text=True, env=env).stdout
-                except subprocess.TimeoutExpired:
-                    pass
-                if notify_action:
+                if subprocess.run(notify_cmd, capture_output=True, text=True, env=env).stdout:
                     unmount()
         elif config.unmount:
             unmount()

@@ -1,5 +1,5 @@
 def main() -> None:
-    from backup import backup_args
+    from backup import backup_args, notify, notifier_exists, NOTIFY_FLAGS
     import datetime
     from utils import argparser, path, error, AUTOMATIC, read
     from last_backup import LAST_BACKUP, DATE_FORMAT, update_last
@@ -9,23 +9,17 @@ def main() -> None:
     backup_args()
     args = argparser.parse_args()
 
-    if args.gui:
-        from gui import main as _main
+    if args.gui and notifier_exists:
         import utils
         from typing import Never
-        from backup_utils import cmd_exists
         from subprocess import run
         from sys import exit
         def gui_error(text: str) -> Never:
-            if cmd_exists("notify-send"):
-                run(["notify-send", text, "-a", "borXplo", "-i", "drive-removable-media"])
+            run(["notify-send", text] + NOTIFY_FLAGS)
             exit(1)
         utils.error = gui_error
-        error = gui_error
-    else:
-        from backup import main as _main
     def main() -> None:
-        _main(args)
+        notify(args)
 
     if not path.exists(LAST_BACKUP):
         main()
@@ -47,7 +41,7 @@ def main() -> None:
     try:
         days = int(days)
     except ValueError:
-        error("""It was not possible to parse the amount of days for the automatic backup execution\n
+        error("""It was not possible to parse the amount of days for the automatic backup execution
 Use 'borxplo automatic' to set it again""")
     if (datetime.date.today() - last_backup).days >= days:
         main()
