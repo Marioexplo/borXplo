@@ -161,14 +161,16 @@ def _main(target_path: str | None, config_path: str | None, profile: str) -> Non
         repo_config.quota = config.quota
     if path.exists(target_path):
         # integrity checks
+        full_checked = False
         if config.full_check:
             FULL_COUNT = path.join(SHARE, "check_counts", profile)
             if path.exists(FULL_COUNT) and int(read(FULL_COUNT)) >= config.full_check:
                 borg(["check", "--verify-data", target_path])
                 write(FULL_COUNT, "0")
+                full_checked = True
             else:
                 write(FULL_COUNT, str(config.full_check + 1))
-        elif config.check:
+        if config.check and not full_checked:
             borg(["check", target_path])
 
         repo_config = load_config(REPO_CONFIG_PATH, RepoInfo)
