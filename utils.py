@@ -23,17 +23,22 @@ def write(path: str, text: str) -> None:
         error(f"It was not possible to write into {path}: {e}")
 
 HOME = path.expanduser("~")
-CONFIG = path.join(HOME, ".config/borXplo")
+CONFIG = path.join(HOME, ".config/borxplo")
 PROFILES = path.join(CONFIG, "profiles")
-AUTOMATIC = path.join(CONFIG, "automatic")
+SHARE = path.join(HOME, ".local/share/borXplo")
+AUTOMATIC = path.join(SHARE, "automatic")
 
 def call_main(main: typing.Callable[[str]], directory: str, action: str, args: Namespace) -> None:
+    def _main(profile: str) -> None:
+        if profile in ("global", ".borXplo"):
+            error("A profile cannot be named " + profile)
+        main(profile)
     if args.profile:
-        main(args.profile)
+        _main(args.profile)
     else:
         from os import listdir
         msg = action + " profile: "
         for profile in listdir(directory):
             print(msg + profile)
-            main(profile)
+            _main(profile)
             print()

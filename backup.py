@@ -24,7 +24,7 @@ def notify(args: Namespace) -> None:
         main(args)
 
 def _main(target_path: str | None, config_path: str | None, profile: str) -> None:
-    from utils import path, HOME, CONFIG, PROFILES, error, read, write
+    from utils import path, HOME, CONFIG, PROFILES, SHARE, error, read, write
     from backup_utils import borg, env, load_config, RepoInfo, dataclass, beartype
     import pyudev
     import backup_utils
@@ -146,21 +146,23 @@ def _main(target_path: str | None, config_path: str | None, profile: str) -> Non
         target_path = path_in_target(config.directory)
         if not path.isdir(target_path):
             error(config.directory + " was not a directory inside the target")
+
     target_path = path_in_target(profile)
+    if not path.exists(target_path):
+        os.mkdir(target_path)
 
     # configure repo
     print("Configuring backup repository")
     if config.progress:
         backup_utils.borg_cmd.append("--progress")
-    REPO_CONFIG_PATH = path_in_target("borXplo.json")
+    REPO_CONFIG_PATH = path_in_target("borXplo")
     quota_exists = config.quota is not None
-    quota_config = path_in_target("quota")
     def set_repo_quota() -> None:
-        write(quota_config, str(config.quota))
+        repo_config.quota = config.quota
     if path.exists(target_path):
         # integrity checks
         if config.full_check:
-            FULL_COUNT = path.join(CONFIG, "check_counts", profile)
+            FULL_COUNT = path.join(SHARE, "check_counts", profile)
             if path.exists(FULL_COUNT) and int(read(FULL_COUNT)) >= config.full_check:
                 borg(["check", "--verify-data", target_path])
                 write(FULL_COUNT, "0")
@@ -180,7 +182,7 @@ def _main(target_path: str | None, config_path: str | None, profile: str) -> Non
                 set_repo_quota()
         elif repo_config.quota:
             change_quota(0)
-            os.remove(quota_config)
+            repo_config.quota = None
 
         if config.root != repo_config.root:
             error("""You should not mix backups read from ~ and /

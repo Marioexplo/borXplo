@@ -10,7 +10,7 @@ def main(repo: str, progress: bool | None) -> None:
     if not path.isdir(repo):
         error("A repository can't be a file!")
 
-    config = backup_utils.load_config(path.join(repo, "borXplo.json"), backup_utils.RepoInfo)
+    config = backup_utils.load_config(path.join(repo, "borXplo"), backup_utils.RepoInfo)
 
     print("Info about the repository that is about to be extracted:")
     backup_utils.borg(["info", repo])

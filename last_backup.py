@@ -1,6 +1,6 @@
-from utils import CONFIG, path, write
+from utils import SHARE, path, write
 
-LAST_BACKUP = path.join(CONFIG, "last_backup")
+LAST_BACKUP = path.join(SHARE, "last_backup")
 DATE_FORMAT = "%Y.%m.%d"
 
 def update_last() -> None:
