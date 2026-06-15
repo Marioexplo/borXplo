@@ -4,7 +4,8 @@ from argparse import ArgumentParser as _ArgParser, Namespace
 from os import path
 
 def error(text: str)->typing.Never:
-    print(text)
+    from sys import stderr
+    print(text, file=stderr)
     exit(1)
 
 argparser = _ArgParser("borXplo", add_help=False)

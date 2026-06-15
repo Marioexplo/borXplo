@@ -41,3 +41,20 @@ class RepoInfo():
     gits: list[str]
     root: bool
     cmds: dict[str, list[str]]
+
+SIGN = "this is a borXplo repo!"
+def is_backup_repo(dir: str) -> bool:
+    from utils import path
+    borxplo = path.join(dir, ".borXplo")
+    return path.isfile(borxplo) and read(borxplo) == SIGN
+
+def backup_repo_error(dir: str) -> None:
+    from sys import stderr
+    msg = dir + " does not seem to be a borXplo backup repository"
+    if stderr.isatty():
+        print(msg, file=stderr)
+        print("Proceed anyway? [Y/n] ", file=stderr, end="")
+        if input().lower() != "y":
+            error("Backup aborted")
+    else:
+        error(msg)

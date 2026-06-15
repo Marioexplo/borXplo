@@ -9,6 +9,8 @@ def main(repo: str, progress: bool | None) -> None:
         error(repo + " doesn't seem to exist")
     if not path.isdir(repo):
         error("A repository can't be a file!")
+    if not backup_utils.is_backup_repo(repo):
+        backup_utils.backup_repo_error(repo)
 
     config = backup_utils.load_config(path.join(repo, "borXplo"), backup_utils.RepoInfo)
 

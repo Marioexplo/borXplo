@@ -33,7 +33,7 @@ def notify(args: Namespace) -> None:
 
 def _main(target_path: str | None, config_path: str | None, profile: str) -> None:
     from utils import path, HOME, CONFIG, SHARE, error, read, write
-    from backup_utils import borg, env, load_config, RepoInfo, dataclass, beartype
+    from backup_utils import borg, env, load_config, RepoInfo, dataclass, beartype, is_backup_repo
     import pyudev
     import backup_utils
     import subprocess
@@ -156,9 +156,17 @@ def _main(target_path: str | None, config_path: str | None, profile: str) -> Non
             if not path.isdir(target_path):
                 error(config.directory + " was not a directory inside the target")
 
-        target_path = path_in_target(profile)
-        if not path.exists(target_path):
-            os.mkdir(target_path)
+    if not is_backup_repo(target_path):
+        if os.listdir():
+            from backup_utils import backup_repo_error
+            backup_repo_error(target_path)
+        else:
+            from backup_utils import SIGN
+            write(path.join(target_path, ".borXplo"), SIGN)
+
+    target_path = path_in_target(profile)
+    if not path.exists(target_path):
+        os.mkdir(target_path)
     print("Target device configured")
 
     # configure repo
