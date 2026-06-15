@@ -5,11 +5,11 @@ def main() -> None:
     from last_backup import LAST_BACKUP, DATE_FORMAT, update_last
 
     argparser.add_argument("-d", "--days")
-    argparser.add_argument("--no-gui", action="store_false", default=True, dest="gui")
+    argparser.add_argument("--no-notify", action="store_false", default=True, dest="notify")
     backup_args()
     args = argparser.parse_args()
 
-    if args.gui and notifier_exists:
+    if args.notify and notifier_exists:
         import utils
         from typing import Never
         from subprocess import run

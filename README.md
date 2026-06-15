@@ -7,7 +7,7 @@ borXplo is a wrapper for Borg that makes it easier to automatically back up your
 When using Borg alone, you would usually make a Shell script to automate the backup process; borXplo's purpose is to already include all the logic that you would usually need, so that you can easily set up your backup routine.  
 Here is what borXplo aims to do:
 * set up **automatic backups**.
-* manage **flash drives**: you willll just have to insert them, borXplo will handle the mounting (and optionally unmounting).
+* manage **flash drives**: you will just have to insert them, borXplo will handle the mounting (and optionally unmounting).
 * easily backup your repositories by using **patterns** or just backing up the ***.git*** directory.
 * lets you configure the most important Borg options.
 * automatically **compact** the backup repository.

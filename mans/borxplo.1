@@ -1,0 +1,94 @@
+.TH borXplo 1 2026\-06\-13
+
+.SH NAME
+
+borxplo \- Marioexplo\(cqs implementation of BorgBackup
+
+.SH SYNOPSIS
+
+.TP
+\fBborxplo \fICOMMAND\fR
+\fICOMMAND\fR can be one of the following (with relative options):
+
+.TP
+\fBbackup\fR [\fB\-\-repo\fR \fIPATH\fR] [\fB\-\-config\fR \fIPATH\fR] [\fB\-\-gui\fR] [\fIPROFILE\fR]
+Back up your data reading the options in \fB~/.config/borxplo/\fIPROFILE\fB.json\fR.
+.br
+If \fB~/.config/borxplo/global.json\fR exists, it will be merged with the configuration file.
+.br
+If \fIPROFILE\fR is not expressed, back up all of the profiles.
+.br
+The following options work only per execution.
+
+.RS 4
+
+.TP 4
+\fB\-\-repo\fR \fIPATH\fR
+.br
+Override the path to the repository with \fIPATH\fR.
+
+.TP 4
+\fB\-\-config\fR \fIPATH\fR
+Override the path to the configuration file with \fIPATH\fR.
+With this option, the \fBglobal\fR configuration will be ignored.
+
+.TP 4
+.B
+\-\-notify
+Notify that it's time to back up.
+
+.RE
+
+.TP
+.B
+help
+Print a list of options.
+
+.TP
+\fBautomatic\fR \fIDAYS\fR
+Set \fBborXplo\fR to check if it's time to back up every time you log in.
+.br
+If \fIDAYS\fR is less than 1, this functionality will be unset.
+
+.TP
+\fBcheck\fR [\fB\-d\fR|\fB\-\-days\fR \fIDAYS\fR] [\fB\-\-no\-notify\fR] [\fB\-\-repo\fR \fIPATH\fR] [\fB\-\-config\fR \fIPATH\fR]
+Check wether it's time to back up.
+.br
+\fB\-\-repo\fR and \fB\-\-config\fR options are available and work as with \fBbackup\fR.
+
+.RS 4
+
+.TP 4
+\fB\-d\fR|\fB\-\-days\fR \fIDAYS\fR
+Ovverride the value previously set by \fBautomatic\fR with \fIDAYS\fR.
+
+.TP 4
+.B
+\-\-no\-notify
+If it's time to back up, remind via console instead of sending a notification.
+
+.RE
+
+.TP
+\fBextract\fR [\fB\-\-progress\fR] \fIPATH\fR
+Extract all of the contents from the repository in \fIPATH\fR and restore them.
+
+.RS 4
+.TP
+.B
+\-\-progress
+Show progress. This will have a small impact on performance.
+.RE
+
+.SH
+DESCRIPTION
+
+\fBborXplo\fR aims at providing a simple interface for \fBBorgBackup\fR.
+To do so, it makes you write simple configuration files in JSON.
+To find out how to write one of this and all of the functionalities, you can look up \fBborxplo(5)\fR.
+
+.SH
+SEE ALSO
+
+.B
+borxplo(5)

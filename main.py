@@ -1,11 +1,14 @@
 from backup_utils import cmd_exists
-from utils import argparser, path, error, HOME, call_main
+from utils import argparser, path, error, HOME, call_main, SHARE
 from sys import argv, _MEIPASS as APP_FILES  # pyright: ignore[reportAttributeAccessIssue]
 import backup
 import os
 
 if not cmd_exists("borg"):
     error("Borg was not found. Install it before using borXplo")
+
+if not path.exists(SHARE):
+    os.mkdir(SHARE)
 
 del argv[0]
 if len(argv) == 0:
@@ -14,10 +17,11 @@ if len(argv) == 0:
 APP_FILES: str
 match argv.pop(0):
     case "backup":
-        argparser.add_argument("--gui", action="store_true")
+        argparser.add_argument("--notify", action="store_true")
         backup.backup_args()
         args = argparser.parse_args()
-        (backup.notify if args.gui else backup.main)(args)
+        (backup.notify if args.notify else backup.main)(args)
+
     case "automatic":
         from utils import AUTOMATIC, write
         if len(argv) == 2:
@@ -59,15 +63,11 @@ match argv.pop(0):
         argparser.add_argument("repo", required=True)
         argparser.add_argument("profile", required=False)
         args = argparser.parse_args()
-        call_main(lambda profile: extract.main(path.join(args.repo, profile), args.progress), args.repo, "Extracting", args)
+        call_main(lambda profile: extract.main(path.join(args.repo, profile), args.progress), ".borXplo", args.repo, "Extracting", args)
 
     case "-h" | "--help" | "help":
         with open(path.join(APP_FILES, "help.txt")) as help:
             print(help.read())
-
-    case "guide":
-        with open(path.join(APP_FILES, "config.guide.txt")) as guide:
-            print(guide.read())
 
     case _:
         error("Invalid command\nRun 'borxplo help' for a list of available commands")

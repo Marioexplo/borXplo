@@ -4,13 +4,21 @@ from backup_utils import cmd_exists
 def backup_args() -> None:
     """Add the arguments for backup"""
     from utils import argparser
-    argparser.add_argument("--path")
+    argparser.add_argument("--repo")
     argparser.add_argument("--config")
     argparser.add_argument("profile", required=False)
 
 def main(args: Namespace) -> None:
-    from utils import call_main, PROFILES
-    call_main(lambda profile: _main(args.path, args.config, profile), PROFILES, "Backing up", args)
+    from utils import call_main, CONFIG
+    if args.config:
+        from utils import error, path
+        if args.profile:
+            error("Reading a passed configuration file does not allow the use of a profile, too")
+        name: str = path.basename(args.config)
+        if not name.endswith(".json"):
+            error("Any configuration file must have the '.json' extension")
+        args.profile = name[:-5]
+    call_main(lambda profile: _main(args.path, args.config, profile), "global.json", CONFIG, "Backing up", args)
 
 notifier_exists = cmd_exists("notify-send")
 NOTIFY_FLAGS = ["-a", "borXplo", "-i", "drive-removable-media"]
@@ -24,7 +32,7 @@ def notify(args: Namespace) -> None:
         main(args)
 
 def _main(target_path: str | None, config_path: str | None, profile: str) -> None:
-    from utils import path, HOME, CONFIG, PROFILES, SHARE, error, read, write
+    from utils import path, HOME, CONFIG, SHARE, error, read, write
     from backup_utils import borg, env, load_config, RepoInfo, dataclass, beartype
     import pyudev
     import backup_utils
@@ -78,21 +86,26 @@ def _main(target_path: str | None, config_path: str | None, profile: str) -> Non
                 if value_type is list:
                     a[key] = a[key] + value
                     continue
-                elif value_type is dict:
-                    merge(a[key], value)
-                    continue
+                # if value_type is dict:
+                #     merge(a[key], value)
+                #     continue
             a[key] = value
         return a
 
-    GLOBAL = path.join(CONFIG, "global.json")
-    config = load_config(path.join(PROFILES, profile + ".json") if config_path is None else config_path, Config)
-    if path.exists(GLOBAL):
-        global_opts = load_config(GLOBAL, Config)
-        config = Config(**merge(global_opts.__dict__, config.__dict__))
+    if config_path:
+        config = load_config(config_path, Config)
+    else:
+        GLOBAL = path.join(CONFIG, "global.json")
+        config = load_config(path.join(CONFIG, profile + ".json"), Config)
+        if path.exists(GLOBAL):
+            global_opts = load_config(GLOBAL, Config)
+            config = Config(**merge(global_opts.__dict__, config.__dict__))
 
     # get storage device
     print("Searching for target device")
     device_node: str | None = None
+    def path_in_target(relative: str)->str:
+        return path.join(target_path, relative)  # pyright: ignore[reportCallIssue, reportArgumentType]
     if target_path is None:
         device_database = pyudev.Context()
         if config.target_node is None:
@@ -136,20 +149,17 @@ def _main(target_path: str | None, config_path: str | None, profile: str) -> Non
                 if config.target_node is None else
                 f"'{config.target_node}' is"
                 } a valid device")
+
+        # get backup repository
+        if config.directory is not None:
+            target_path = path_in_target(config.directory)
+            if not path.isdir(target_path):
+                error(config.directory + " was not a directory inside the target")
+
+        target_path = path_in_target(profile)
+        if not path.exists(target_path):
+            os.mkdir(target_path)
     print("Target device configured")
-
-    def path_in_target(relative: str)->str:
-        return path.join(target_path, relative)  # pyright: ignore[reportCallIssue, reportArgumentType]
-
-    print("Preparing for the backup process")
-    if config.directory is not None:
-        target_path = path_in_target(config.directory)
-        if not path.isdir(target_path):
-            error(config.directory + " was not a directory inside the target")
-
-    target_path = path_in_target(profile)
-    if not path.exists(target_path):
-        os.mkdir(target_path)
 
     # configure repo
     print("Configuring backup repository")
@@ -162,14 +172,18 @@ def _main(target_path: str | None, config_path: str | None, profile: str) -> Non
     if path.exists(target_path):
         # integrity checks
         full_checked = False
-        if config.full_check:
-            FULL_COUNT = path.join(SHARE, "check_counts", profile)
-            if path.exists(FULL_COUNT) and int(read(FULL_COUNT)) >= config.full_check:
+        if config.full_check is not None:
+            CHECK_COUNTS = path.join(SHARE, "check_counts")
+            if not path.exists(CHECK_COUNTS):
+                os.mkdir(CHECK_COUNTS)
+            CHECK_COUNTS = path.join(CHECK_COUNTS, profile)
+            checks = int(read(CHECK_COUNTS)) if path.exists(CHECK_COUNTS) else 0
+            if checks >= config.full_check:
                 borg(["check", "--verify-data", target_path])
-                write(FULL_COUNT, "0")
+                write(CHECK_COUNTS, "0")
                 full_checked = True
             else:
-                write(FULL_COUNT, str(config.full_check + 1))
+                write(CHECK_COUNTS, str(config.full_check + 1))
         if config.check and not full_checked:
             borg(["check", target_path])
 
@@ -189,7 +203,6 @@ def _main(target_path: str | None, config_path: str | None, profile: str) -> Non
         if config.root != repo_config.root:
             error("""You should not mix backups read from ~ and /
 If you need to back up some files from root, either delete this repo first or create another profile for those files""")
-        os.chdir("/" if config.root else HOME)
 
         print("Repository configured")
     else:
@@ -198,7 +211,7 @@ If you need to back up some files from root, either delete this repo first or cr
             initializer += ["--storage-quota", f"{config.quota}G"]
             set_repo_quota()
         borg(initializer)
-        repo_config = RepoInfo([], config.root, {})
+        repo_config = RepoInfo(None, [], config.root, {})
         print("Repository initialized")
 
     # read repos
@@ -213,6 +226,7 @@ If you need to back up some files from root, either delete this repo first or cr
     cmds: dict[str, list[str]] = {}
 
     pattern_args: list[str] = []
+    os.chdir("/" if config.root else HOME)
     def backup(repo: Config.Repo)->None:
         nonlocal backup_cmd, pattern_args
 
@@ -228,6 +242,8 @@ If you need to back up some files from root, either delete this repo first or cr
         if repo.base:
             if repo.base in config.bases:
                 base = config.bases[repo.base]
+                if base.base:
+                    error("A base can't be based on another base.\nPlese remove the 'base' field from any object in 'bases'")
                 repo = Config.Repo(**merge(base.__dict__, repo.__dict__))
             else:
                 error(f"Base '{repo.base}' doesn't exist")
@@ -248,7 +264,7 @@ If you need to back up some files from root, either delete this repo first or cr
         if repo.include:
             for glob_path in repo.include:
                 backup_cmd += [path.realpath(p) for p in glob(path.join(repo_path, glob_path))]
-        elif repo.exclude or repo.patterns or not repo.git:
+        elif not repo.git:
             backup_cmd.append(repo_path)
         if repo.git:
             backup_cmd.append(path.join(repo_path, ".git"))

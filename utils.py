@@ -24,21 +24,32 @@ def write(path: str, text: str) -> None:
 
 HOME = path.expanduser("~")
 CONFIG = path.join(HOME, ".config/borxplo")
-PROFILES = path.join(CONFIG, "profiles")
 SHARE = path.join(HOME, ".local/share/borXplo")
 AUTOMATIC = path.join(SHARE, "automatic")
 
-def call_main(main: typing.Callable[[str]], directory: str, action: str, args: Namespace) -> None:
-    def _main(profile: str) -> None:
-        if profile in ("global", ".borXplo"):
-            error("A profile cannot be named " + profile)
-        main(profile)
+def call_main(
+    main: typing.Callable[[str]],
+    unavailable: typing.Literal["global.json", ".borXplo"],
+    directory: str,
+    action: str,
+    args: Namespace
+) -> None:
     if args.profile:
-        _main(args.profile)
+        if args.profile in ("global", ".borXplo"):
+            error("A profile cannot be named " + args.profile)
+        main(args.profile)
     else:
         from os import listdir
+        configs = listdir(directory)
+        configs.remove(unavailable)
+        if unavailable == "global.json":
+            for i in range(len(configs)):
+                if configs[i].endswith(".json"):
+                    configs[i] = configs[i][:-5]
+                else:
+                    error("Each configuration file must have the '.json' extension")
         msg = action + " profile: "
-        for profile in listdir(directory):
+        for profile in configs:
             print(msg + profile)
-            _main(profile)
+            main(profile)
             print()
