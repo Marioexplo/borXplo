@@ -45,7 +45,7 @@ class RepoInfo():
 SIGN = "this is a borXplo repo!"
 def is_backup_repo(dir: str) -> bool:
     from utils import path
-    borxplo = path.join(dir, ".borXplo")
+    borxplo = path.join(dir, "borXplo")
     return path.isfile(borxplo) and read(borxplo) == SIGN
 
 def backup_repo_error(dir: str) -> None:

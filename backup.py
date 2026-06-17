@@ -157,6 +157,8 @@ def _main(target_path: str | None, config_path: str | None, profile: str) -> Non
                 if config.target_node is None else
                 f"'{config.target_node}' is"
                 } a valid device")
+    else:
+        target_path = path.abspath(target_path)
 
     def path_in_target(relative: str)->str:
         return path.join(target_path, relative)  # pyright: ignore[reportCallIssue, reportArgumentType]
@@ -173,7 +175,7 @@ def _main(target_path: str | None, config_path: str | None, profile: str) -> Non
             backup_repo_error(target_path)
         else:
             from backup_utils import SIGN
-            write(path.join(target_path, ".borXplo"), SIGN)
+            write(path.join(target_path, "borXplo"), SIGN)
 
     target_path = path_in_target(profile)
     print("Target device configured")
@@ -197,22 +199,24 @@ def _main(target_path: str | None, config_path: str | None, profile: str) -> Non
                 borg(["check", "--verify-data", target_path])
                 write(CHECK_COUNTS, "0")
                 full_checked = True
+                print("Full repository check completed")
             else:
-                write(CHECK_COUNTS, str(config.full_check + 1))
+                write(CHECK_COUNTS, str(checks + 1))
         if config.check and not full_checked:
             borg(["check", target_path])
+            print("Repository check completed")
 
         repo_config = load_config(REPO_CONFIG_PATH, RepoInfo)
 
-        def change_quota(quota)->None:
-            borg(["config", target_path, "storage_quota", f"{quota}G"])
+        def change_quota(arg)->None:
+            borg(["config", target_path, "storage_quota", arg])
             print("New repository quota set")
         if quota_exists:
             if not repo_config.quota or config.quota != repo_config.quota:
-                change_quota(config.quota)
+                change_quota(str(config.quota) + "G")
                 repo_config.quota = config.quota
         elif repo_config.quota:
-            change_quota(0)
+            change_quota("--delete")
             repo_config.quota = None
 
         if config.root != repo_config.root:
@@ -328,7 +332,7 @@ If you need to back up some files from root, either delete this repo first or cr
                 notify_cmd[2] += "\nThe media can now be removed."
                 subprocess.run(notify_cmd, env=env)
             else:
-                notify_cmd += ["-A", "Unmount media", "-t", "7000"]
+                notify_cmd += ["-A", "Unmount media"]
                 if subprocess.run(notify_cmd, capture_output=True, text=True, env=env).stdout:
                     unmount()
         elif config.unmount:

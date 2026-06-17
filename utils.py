@@ -30,13 +30,13 @@ AUTOMATIC = path.join(SHARE, "automatic")
 
 def call_main(
     main: typing.Callable[[str], None],
-    unavailable: typing.Literal["global.json", ".borXplo"],
+    unavailable: typing.Literal["global.json", "borXplo"],
     directory: str,
     action: str,
     args: Namespace
 ) -> None:
     if args.profile:
-        if args.profile in ("global", ".borXplo"):
+        if args.profile in ("global", "borXplo"):
             error("A profile cannot be named " + args.profile)
         main(args.profile)
     else:

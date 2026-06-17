@@ -73,7 +73,7 @@ match argv.pop(1):
 
         call_main(
             lambda profile: extract.main(path.join(args.repo, profile), args.progress, args.yes),
-            ".borXplo",
+            "borXplo",
             args.repo,
             "Extracting",
             args
