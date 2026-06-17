@@ -14,10 +14,10 @@ def main() -> None:
         from typing import Never
         from subprocess import run
         from sys import exit
-        def gui_error(text: str) -> Never:
+        def notif_error(text: str) -> Never:
             run(["notify-send", text] + NOTIFY_FLAGS)
             exit(1)
-        utils.error = gui_error
+        utils.error = notif_error
     def main() -> None:
         notify(args)
 

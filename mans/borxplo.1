@@ -11,7 +11,7 @@ borxplo \- Marioexplo\(cqs implementation of BorgBackup
 \fICOMMAND\fR can be one of the following (with relative options):
 
 .TP
-\fBbackup\fR [\fB\-\-repo\fR \fIPATH\fR] [\fB\-\-config\fR \fIPATH\fR] [\fB\-\-gui\fR] [\fIPROFILE\fR]
+\fBbackup\fR [\fB\-\-repo\fR \fIPATH\fR] [\fB\-\-config\fR \fIPATH\fR] [\fB\-\-notify\fR] [\fIPROFILE\fR]
 Back up your data reading the options in \fB~/.config/borxplo/\fIPROFILE\fB.json\fR.
 .br
 If \fB~/.config/borxplo/global.json\fR exists, it will be merged with the configuration file.
@@ -70,14 +70,21 @@ If it's time to back up, remind via console instead of sending a notification.
 .RE
 
 .TP
-\fBextract\fR [\fB\-\-progress\fR] \fIPATH\fR
+\fBextract\fR [\fB\-\-progress\fR] [\fB\-y\fR|\fB\-\-yes\fR] \fIPATH\fR [\fIPROFILE\fR]
 Extract all of the contents from the repository in \fIPATH\fR and restore them.
+If \fBPROFILE\fR is given, just the corresponding repository will be extracted.
 
 .RS 4
+
 .TP
 .B
 \-\-progress
 Show progress. This will have a small impact on performance.
+
+.TP
+\fB\-y\fR|\fB\-\-yes\fR
+Do not ask for confirmation.
+
 .RE
 
 .SH

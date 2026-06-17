@@ -23,14 +23,13 @@ match argv.pop(1):
 
     case "automatic":
         from utils import AUTOMATIC, write
-        if len(argv) == 2:
-            error("The number of days must be given")
 
-        n_str = argv[2]
+        argparser.add_argument("days")
+        args = argparser.parse_args()
         try:
-            n = int(n_str)
+            n = int(args.days)
         except ValueError:
-            error(n_str + " is not an integer")
+            error(args.days + " is not an integer")
 
         autostart = path.join(HOME, ".config/autostart")
         if not path.isdir(autostart):
@@ -45,7 +44,7 @@ match argv.pop(1):
         if n > 0:
             if not autostart_exists:
                 write(autostart, open(path.join(APP_FILES, "automatic.desktop")).read())
-            write(AUTOMATIC, n_str)
+            write(AUTOMATIC, args.days)
         elif autostart_exists:
             if path.isfile(autostart):
                 os.remove(autostart)
@@ -58,11 +57,27 @@ match argv.pop(1):
 
     case "extract":
         import extract
+        from backup_utils import is_backup_repo, backup_repo_error
         argparser.add_argument("--progress", action="store_true")
+        argparser.add_argument("-y", "--yes", action="store_true")
         argparser.add_argument("repo")
         argparser.add_argument("profile", nargs="?")
         args = argparser.parse_args()
-        call_main(lambda profile: extract.main(path.join(args.repo, profile), args.progress), ".borXplo", args.repo, "Extracting", args)
+
+        if not path.exists(args.repo):
+            error(args.repo + " doesn't seem to exist")
+        if not path.isdir(args.repo):
+            error("A repository can't be a file!")
+        if not is_backup_repo(args.repo):
+            backup_repo_error(args.repo)
+
+        call_main(
+            lambda profile: extract.main(path.join(args.repo, profile), args.progress, args.yes),
+            ".borXplo",
+            args.repo,
+            "Extracting",
+            args
+        )
 
     case "-h" | "--help" | "help":
         with open(path.join(APP_FILES, "help.txt")) as help:

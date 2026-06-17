@@ -1,21 +1,16 @@
-def main(repo: str, progress: bool | None) -> None:
-    from utils import error, path, HOME
+def main(repo: str, progress: bool, yes: bool) -> None:
+    from utils import path, HOME
     from sys import exit
     import json
     from subprocess import run
     import backup_utils
 
-    if not path.exists(repo):
-        error(repo + " doesn't seem to exist")
-    if not path.isdir(repo):
-        error("A repository can't be a file!")
-    if not backup_utils.is_backup_repo(repo):
-        backup_utils.backup_repo_error(repo)
-
     config = backup_utils.load_config(path.join(repo, "borXplo"), backup_utils.RepoInfo)
 
     print("Info about the repository that is about to be extracted:")
     backup_utils.borg(["info", repo])
+    if not (yes or input("Is this ok? [Y/n] ").lower() == "y"):
+        return
 
     info = run(["borg", "info", repo, "--last", "1", "--json"], capture_output=True, text=True, env=backup_utils.env)
     if info.returncode != 0:

@@ -25,8 +25,8 @@ NOTIFY_FLAGS = ["-a", "borXplo", "-i", "drive-removable-media"]
 def notify(args: Namespace) -> None:
     from subprocess import run
     if (
-        run(["notify-send", "It's time to back up your data!", "-A", "Back up"] + NOTIFY_FLAGS).stdout
-        if args.gui and notifier_exists else
+        run(["notify-send", "It's time to back up your data!", "-A", "Back up"] + NOTIFY_FLAGS, capture_output=True).stdout
+        if args.notify and notifier_exists else
         input("It's time to back up your data!\nBack up now? [Y/n] ").lower() == "y"
     ):
         main(args)
@@ -245,7 +245,7 @@ If you need to back up some files from root, either delete this repo first or cr
         nonlocal backup_cmd, pattern_args
 
         # get path
-        repo_path = path.realpath(repo.path)
+        repo_path = path.relpath(path.realpath(repo.path))
 
         # .borxplo feature
         dot_config = path.join(repo_path, ".borxplo.json")

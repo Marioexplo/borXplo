@@ -8,7 +8,7 @@ def error(text: str)->typing.Never:
     print(text, file=stderr)
     exit(1)
 
-argparser = _ArgParser("borXplo", add_help=False)
+argparser = _ArgParser("borXplo", add_help=False, usage="See 'borxplo help' for usage details")
 
 def read(path: str) -> str:
     try:
