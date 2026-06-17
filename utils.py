@@ -29,7 +29,7 @@ SHARE = path.join(HOME, ".local/share/borXplo")
 AUTOMATIC = path.join(SHARE, "automatic")
 
 def call_main(
-    main: typing.Callable[[str]],
+    main: typing.Callable[[str], None],
     unavailable: typing.Literal["global.json", ".borXplo"],
     directory: str,
     action: str,
@@ -42,7 +42,8 @@ def call_main(
     else:
         from os import listdir
         configs = listdir(directory)
-        configs.remove(unavailable)
+        if unavailable in configs:
+            configs.remove(unavailable)
         if unavailable == "global.json":
             for i in range(len(configs)):
                 if configs[i].endswith(".json"):

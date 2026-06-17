@@ -1,22 +1,22 @@
 Usage: borxplo COMMAND
     COMMAND can be one of the following options:
 
-    backup [--path PATH] [--config PATH] [--gui] [PROFILE]
+    backup [--repo PATH] [--config PATH] [--gui] [PROFILE]
                         Back up your data reading the options in ~/.config/borxplo/PROFILE.json
                         If ~/.config/borxplo/global.json exists,
                         it will be merged with the configuration file
                         If PROFILE is not expressed, back up all of the profiles
                         The following options work only per execution.
-        --path PATH         Override the path to the repository with PATH
+        --repo PATH         Override the path to the repository with PATH
         --config PATH       Override the path to the configuration file with PATH.
                             With this option, the global configuration will be ignored
         --notify            Notify that it's time to back up
     help                Show this message
     automatic DAYS      Set borXplo to check if it's time to back up every time you log in
                         If DAYS is less than 1, this functionality will be unset
-    check [-d|--days DAYS] [--no-gui] [--path PATH] [--config PATH]
+    check [-d|--days DAYS] [--no-gui] [--repo PATH] [--config PATH]
                         Check wether it's time to back up
-                        --path and --config options are available and work as with 'backup'
+                        --repo and --config options are available and work as with 'backup'
         -d|--days DAYS      Ovverride the value previously set  by 'automatic' with DAYS
         --no-notify         If it's time to back up, remind via console instead of sending a notification
     extract [--progress] PATH

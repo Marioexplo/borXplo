@@ -273,6 +273,22 @@ The \fBbase\fR option in a \fBRepository\fR is used.
 .IP \(bu 2
 A \fB.borxplo.json\fR file is present in the \fBpath\fR of a \fBRepository\fR, so its contents will be merged in the \fBRepository\fR.
 
+.SH READING Repository
+When a \fBRepository\fR is read, this is the order that is followed:
+.IP \(bu 2
+The \fBbase\fR, if the field is present, is resolved.
+.IP \(bu 2
+\fBpath\fR is resolved.
+.IP \(bu 2
+If \fB.borxplo.json\fR is present, it's merged.
+.IP \(bu 2
+\fBdirectories\fR is resolved, creating a new \fBRepository\fR for each value in the array.
+These \fBRepository\fRs are then read again starting from resolving \fBpath\fR.
+.IP \(bu 2
+\fBcmd\fR is saved for extraction.
+.IP \(bu 2
+The actual paths to pass to \fBBorg\fR are read by interpreting \fBinclude\fR, \fBexclude\fR, \fBpatterns\fR and \fBgit\fR.
+
 .SH FILES
 This is the file structure used by \fBborXplo\fR.
 .sp
@@ -293,7 +309,8 @@ This is what your backup repository will look like:
 └── \fIProfile\fR/
     ├── borXplo
     └── \fIBorg repo\fR
-.sp
+
+.SH NOTES
 You may have noticed that this software sometimes is referred as \fBborXplo\fR and sometimes \fBborxplo\fR.
 This is because, although its actual name is \fBborXplo\fR, the uppercase X in the middle of the name,
 even though it's very cool, makes it quite annoying to digit, so for any actual use case,

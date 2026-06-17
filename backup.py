@@ -6,7 +6,7 @@ def backup_args() -> None:
     from utils import argparser
     argparser.add_argument("--repo")
     argparser.add_argument("--config")
-    argparser.add_argument("profile", required=False)
+    argparser.add_argument("profile", nargs="?")
 
 def main(args: Namespace) -> None:
     from utils import call_main, CONFIG
@@ -18,7 +18,7 @@ def main(args: Namespace) -> None:
         if not name.endswith(".json"):
             error("Any configuration file must have the '.json' extension")
         args.profile = name[:-5]
-    call_main(lambda profile: _main(args.path, args.config, profile), "global.json", CONFIG, "Backing up", args)
+    call_main(lambda profile: _main(args.repo, args.config, profile), "global.json", CONFIG, "Backing up", args)
 
 notifier_exists = cmd_exists("notify-send")
 NOTIFY_FLAGS = ["-a", "borXplo", "-i", "drive-removable-media"]
@@ -34,6 +34,7 @@ def notify(args: Namespace) -> None:
 def _main(target_path: str | None, config_path: str | None, profile: str) -> None:
     from utils import path, HOME, CONFIG, SHARE, error, read, write
     from backup_utils import borg, env, load_config, RepoInfo, dataclass, beartype, is_backup_repo
+    from dataclasses import field, InitVar
     import pyudev
     import backup_utils
     import subprocess
@@ -61,7 +62,8 @@ def _main(target_path: str | None, config_path: str | None, profile: str) -> Non
             base: str | None = None
             cmd: list[str] | None = None
 
-        repos: list[Repo]
+        repos: InitVar[list[dict]]
+        repositories: list[Repo] = field(init=False)
         target_label: str | None = None
         only_usb: bool = False
         target_node: str | None = None
@@ -75,7 +77,15 @@ def _main(target_path: str | None, config_path: str | None, profile: str) -> Non
         max_archives: int | None = None
         root: bool = False
         unmount: bool = False
-        bases: dict[str, Repo] = {}
+        bases: InitVar[dict[str, dict] | None] = None
+        repo_bases: dict[str, Repo] = field(init=False)
+
+        def __post_init__(self, repos: list[dict], bases: dict[str, dict] | None) -> None:
+            self.repositories = [Config.Repo(**repo) for repo in repos]
+            self.repo_bases = {}
+            if bases:
+                for key in bases.keys():
+                    self.repo_bases[key] = Config.Repo(**bases[key])
 
     def merge(a: dict, b: dict) -> dict:
         for key, value in b.items():
@@ -104,8 +114,6 @@ def _main(target_path: str | None, config_path: str | None, profile: str) -> Non
     # get storage device
     print("Searching for target device")
     device_node: str | None = None
-    def path_in_target(relative: str)->str:
-        return path.join(target_path, relative)  # pyright: ignore[reportCallIssue, reportArgumentType]
     if target_path is None:
         device_database = pyudev.Context()
         if config.target_node is None:
@@ -150,14 +158,17 @@ def _main(target_path: str | None, config_path: str | None, profile: str) -> Non
                 f"'{config.target_node}' is"
                 } a valid device")
 
-        # get backup repository
-        if config.directory is not None:
-            target_path = path_in_target(config.directory)
-            if not path.isdir(target_path):
-                error(config.directory + " was not a directory inside the target")
+    def path_in_target(relative: str)->str:
+        return path.join(target_path, relative)  # pyright: ignore[reportCallIssue, reportArgumentType]
+
+    # get backup repository
+    if config.directory is not None:
+        target_path = path_in_target(config.directory)
+        if not path.isdir(target_path):
+            error(config.directory + " was not a directory inside the target")
 
     if not is_backup_repo(target_path):
-        if os.listdir():
+        if os.listdir(target_path):
             from backup_utils import backup_repo_error
             backup_repo_error(target_path)
         else:
@@ -165,8 +176,6 @@ def _main(target_path: str | None, config_path: str | None, profile: str) -> Non
             write(path.join(target_path, ".borXplo"), SIGN)
 
     target_path = path_in_target(profile)
-    if not path.exists(target_path):
-        os.mkdir(target_path)
     print("Target device configured")
 
     # configure repo
@@ -175,8 +184,6 @@ def _main(target_path: str | None, config_path: str | None, profile: str) -> Non
         backup_utils.borg_cmd.append("--progress")
     REPO_CONFIG_PATH = path_in_target("borXplo")
     quota_exists = config.quota is not None
-    def set_repo_quota() -> None:
-        repo_config.quota = config.quota
     if path.exists(target_path):
         # integrity checks
         full_checked = False
@@ -203,7 +210,7 @@ def _main(target_path: str | None, config_path: str | None, profile: str) -> Non
         if quota_exists:
             if not repo_config.quota or config.quota != repo_config.quota:
                 change_quota(config.quota)
-                set_repo_quota()
+                repo_config.quota = config.quota
         elif repo_config.quota:
             change_quota(0)
             repo_config.quota = None
@@ -214,12 +221,11 @@ If you need to back up some files from root, either delete this repo first or cr
 
         print("Repository configured")
     else:
+        repo_config = RepoInfo(config.quota, [], config.root, {})
         initializer = ["init", "-e", "none", target_path]
         if quota_exists:
             initializer += ["--storage-quota", f"{config.quota}G"]
-            set_repo_quota()
         borg(initializer)
-        repo_config = RepoInfo(None, [], config.root, {})
         print("Repository initialized")
 
     # read repos
@@ -246,20 +252,6 @@ If you need to back up some files from root, either delete this repo first or cr
         if path.isfile(dot_config):
             repo = Config.Repo(**merge(repo.__dict__, load_config(dot_config, Config.Repo).__dict__))
 
-        # base feature
-        if repo.base:
-            if repo.base in config.bases:
-                base = config.bases[repo.base]
-                if base.base:
-                    error("A base can't be based on another base.\nPlese remove the 'base' field from any object in 'bases'")
-                repo = Config.Repo(**merge(base.__dict__, repo.__dict__))
-            else:
-                error(f"Base '{repo.base}' doesn't exist")
-
-        # cmd feature
-        if repo.cmd:
-            cmds[repo_path] = repo.cmd
-
         # directories feature
         if repo.directories:
             dirs = repo.directories
@@ -268,6 +260,10 @@ If you need to back up some files from root, either delete this repo first or cr
                 repo.path = path.join(repo_path, dir)
                 backup(repo)
             return
+
+        # cmd feature
+        if repo.cmd:
+            cmds[repo_path] = repo.cmd
 
         if repo.include:
             for glob_path in repo.include:
@@ -286,7 +282,17 @@ If you need to back up some files from root, either delete this repo first or cr
                 if not dd:
                     error("':' wasn't found in the pattern of the repo with path " + repo_path)
                 pattern_args += ["--pattern", action + dd + path.join(repo_path, pattern)]
-    for repo in config.repos:
+    for repo in config.repositories:
+        # base feature
+        if repo.base:
+            if repo.base in config.repo_bases:
+                base = config.repo_bases[repo.base]
+                if base.base:
+                    error("A base can't be based on another base.\nPlese remove the 'base' field from any object in 'bases'")
+                repo = Config.Repo(**merge(base.__dict__, repo.__dict__))
+            else:
+                error(f"Base '{repo.base}' doesn't exist")
+
         backup(repo)
     print("Backing up...")
     borg(backup_cmd + pattern_args)
@@ -294,7 +300,7 @@ If you need to back up some files from root, either delete this repo first or cr
     # repo config
     repo_config.gits = gits
     repo_config.cmds = cmds
-    write(REPO_CONFIG_PATH, json.dumps(repo_config))
+    write(REPO_CONFIG_PATH, json.dumps(repo_config.__dict__))
     print("Backup completed")
 
     # compact repo

@@ -10,12 +10,11 @@ if not cmd_exists("borg"):
 if not path.exists(SHARE):
     os.mkdir(SHARE)
 
-del argv[0]
-if len(argv) == 0:
+if len(argv) == 1:
     error("No command was given\nUse 'borxplo help' to get the list of commands and options")
 
 APP_FILES: str
-match argv.pop(0):
+match argv.pop(1):
     case "backup":
         argparser.add_argument("--notify", action="store_true")
         backup.backup_args()
@@ -60,8 +59,8 @@ match argv.pop(0):
     case "extract":
         import extract
         argparser.add_argument("--progress", action="store_true")
-        argparser.add_argument("repo", required=True)
-        argparser.add_argument("profile", required=False)
+        argparser.add_argument("repo")
+        argparser.add_argument("profile", nargs="?")
         args = argparser.parse_args()
         call_main(lambda profile: extract.main(path.join(args.repo, profile), args.progress), ".borXplo", args.repo, "Extracting", args)
 
