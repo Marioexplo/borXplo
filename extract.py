@@ -9,6 +9,8 @@ def main(repo: str, progress: bool, yes: bool) -> None:
 
     print("Info about the repository that is about to be extracted:")
     backup_utils.borg(["info", repo])
+    print("borXplo configuration:")
+    print(json.dumps(config.__dict__))
     if not (yes or input("Is this ok? [Y/n] ").lower() == "y"):
         return
 
@@ -20,19 +22,24 @@ def main(repo: str, progress: bool, yes: bool) -> None:
     archive: str = json.loads(info.stdout)["archives"][0]["name"]
 
     print("Extracting...")
+    cwd = "/" if config.root else HOME
     if progress:
         backup_utils.borg_cmd.append("--progress")
     if config.root:
         backup_utils.borg_cmd.insert(0, "sudo")
         print("The root_extract option was used with this repository\nYou may be asked to insert your password")
-    backup_utils.borg(["extract", path.abspath(repo) + "::" + archive], cwd="/" if config.root else HOME)
+    backup_utils.borg(["extract", path.abspath(repo) + "::" + archive], cwd=cwd)
 
     print("Restoring git repositories")
     for git in config.gits:
         run(["git", "restore", "."], env=backup_utils.env, cwd=git)
 
-    print("Executing custom commands")
+    print("Executing custom commands:")
+    def exec(cmd: str, dir: str) -> None:
+        print(f"Executing '{cmd}'")
+        run(cmd, shell=True, env=backup_utils.env, cwd=dir)
+    for cmd in config.cmd:
+        exec(cmd, cwd)
     for dir, cmd in config.cmds.items():
-        run(";".join(cmd), shell=True, env=backup_utils.env, cwd=dir)
-
+        exec(";".join(cmd), dir)
     print("Extraction successfully completed")

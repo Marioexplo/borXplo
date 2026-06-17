@@ -33,8 +33,9 @@ def notify(args: Namespace) -> None:
 
 def _main(target_path: str | None, config_path: str | None, profile: str) -> None:
     from utils import path, HOME, CONFIG, SHARE, error, read, write
-    from backup_utils import borg, env, load_config, RepoInfo, dataclass, beartype, is_backup_repo
+    from backup_utils import borg, env, load_config, RepoInfo, dataclass, is_backup_repo
     from dataclasses import field, InitVar
+    from beartype import beartype
     import pyudev
     import backup_utils
     import subprocess
@@ -47,69 +48,95 @@ def _main(target_path: str | None, config_path: str | None, profile: str) -> Non
 
     # get config
     print("Retrievieng configuration file")
-    @beartype
     @dataclass
     class Config():
-        @beartype
         @dataclass
         class Repo():
             path: str
             include: list[str] | None = None
             exclude: list[str] | None = None
             patterns: list[str] | None = None
-            git: bool = False
+            git: bool | None = None
             directories: list[str] | None = None
             base: str | None = None
             cmd: list[str] | None = None
 
-        repos: InitVar[list[dict]]
-        repositories: list[Repo] = field(init=False)
+        @dataclass
+        class Base(Repo):
+            path: str = field(init=False)
+
+        class Bases(dict[str, Base]):
+            from typing import Any
+            def to_dict(self) -> dict[str, Any]:
+                from typing import Any
+                d: dict[str, Any] = self.copy()
+                for key in d.keys():
+                    d[key] = d[key].__dict__
+                return d
+
+        repositories: list[Repo]
+        repo_bases: Bases
         target_label: str | None = None
-        only_usb: bool = False
+        only_usb: bool | None = None
         target_node: str | None = None
         directory: str | None = None
         quota: float | None = None
-        check: bool = True
+        check: bool | None = True
         full_check: int | None = None
-        progress: bool = False
-        stats: bool = False
+        progress: bool | None = None
+        stats: bool | None = None
         compression: str | None = None
         max_archives: int | None = None
-        root: bool = False
-        unmount: bool = False
-        bases: InitVar[dict[str, dict] | None] = None
-        repo_bases: dict[str, Repo] = field(init=False)
+        root: bool | None = None
+        unmount: bool | None = None
+        cmd: list[str] | None = None
+    @beartype
+    @dataclass
+    class BearConfig(Config):
+        @beartype
+        class Repo(Config.Repo):
+            pass
 
-        def __post_init__(self, repos: list[dict], bases: dict[str, dict] | None) -> None:
-            self.repositories = [Config.Repo(**repo) for repo in repos]
-            self.repo_bases = {}
+        @beartype
+        class Base(Config.Base):
+            pass
+
+        repos: InitVar[list[dict] | None] = None
+        repositories: list[Config.Repo] = field(init=False)
+        bases: InitVar[dict[str, dict] | None] = None
+        repo_bases: Config.Bases = field(init=False)
+
+        def __post_init__(self, repos: list[dict] | None, bases: dict[str, dict] | None) -> None:
+            self.repositories = [BearConfig.Repo(**repo) for repo in repos] if repos else []
+            self.repo_bases = Config.Bases()
             if bases:
                 for key in bases.keys():
-                    self.repo_bases[key] = Config.Repo(**bases[key])
+                    self.repo_bases[key] = BearConfig.Base(**bases[key])
 
     def merge(a: dict, b: dict) -> dict:
         for key, value in b.items():
-            if type(a[key]) is not None:
-                value_type = type(value)
-                if value_type is None:
+            if value is None:
+                continue
+            if a[key] is not None:
+                if type(value) is list:
+                    a[key] += value
                     continue
-                if value_type is list:
-                    a[key] = a[key] + value
+                elif type(value) is Config.Bases and a[key]:
+                    a[key] = merge(a[key].to_dict(), value.to_dict())
                     continue
-                # if value_type is dict:
-                #     merge(a[key], value)
-                #     continue
             a[key] = value
         return a
 
     if config_path:
-        config = load_config(config_path, Config)
+        config = load_config(config_path, BearConfig)
     else:
         GLOBAL = path.join(CONFIG, "global.json")
-        config = load_config(path.join(CONFIG, profile + ".json"), Config)
+        config = load_config(path.join(CONFIG, profile + ".json"), BearConfig)
         if path.exists(GLOBAL):
-            global_opts = load_config(GLOBAL, Config)
+            global_opts = load_config(GLOBAL, BearConfig)
             config = Config(**merge(global_opts.__dict__, config.__dict__))
+    if not config.repositories:
+        error("""The 'repos' field was found missing or empty\nPlease fill it, otherwise, how would I know what to back up?""")
 
     # get storage device
     print("Searching for target device")
@@ -202,7 +229,7 @@ def _main(target_path: str | None, config_path: str | None, profile: str) -> Non
                 print("Full repository check completed")
             else:
                 write(CHECK_COUNTS, str(checks + 1))
-        if config.check and not full_checked:
+        if (config.check is None or config.check) and not full_checked:
             borg(["check", target_path])
             print("Repository check completed")
 
@@ -219,13 +246,13 @@ def _main(target_path: str | None, config_path: str | None, profile: str) -> Non
             change_quota("--delete")
             repo_config.quota = None
 
-        if config.root != repo_config.root:
+        if repo_config.root if config.root is None else (config.root != repo_config.root):
             error("""You should not mix backups read from ~ and /
 If you need to back up some files from root, either delete this repo first or create another profile for those files""")
 
         print("Repository configured")
     else:
-        repo_config = RepoInfo(config.quota, [], config.root, {})
+        repo_config = RepoInfo(config.quota, [], False if config.root is None else config.root, [], {})
         initializer = ["init", "-e", "none", target_path]
         if quota_exists:
             initializer += ["--storage-quota", f"{config.quota}G"]
@@ -245,16 +272,18 @@ If you need to back up some files from root, either delete this repo first or cr
 
     pattern_args: list[str] = []
     os.chdir("/" if config.root else HOME)
+    def realpath(pat: str) -> str:
+        return path.relpath(path.realpath(pat))
     def backup(repo: Config.Repo)->None:
         nonlocal backup_cmd, pattern_args
 
         # get path
-        repo_path = path.relpath(path.realpath(repo.path))
+        repo_path = realpath(repo.path)
 
         # .borxplo feature
         dot_config = path.join(repo_path, ".borxplo.json")
         if path.isfile(dot_config):
-            repo = Config.Repo(**merge(repo.__dict__, load_config(dot_config, Config.Repo).__dict__))
+            repo = Config.Repo(**merge(repo.__dict__, load_config(dot_config, BearConfig.Repo).__dict__))
 
         # directories feature
         if repo.directories:
@@ -271,7 +300,7 @@ If you need to back up some files from root, either delete this repo first or cr
 
         if repo.include:
             for glob_path in repo.include:
-                backup_cmd += [path.realpath(p) for p in glob(path.join(repo_path, glob_path))]
+                backup_cmd += [realpath(p) for p in glob(path.join(repo_path, glob_path))]
         elif not repo.git:
             backup_cmd.append(repo_path)
         if repo.git:
@@ -293,7 +322,8 @@ If you need to back up some files from root, either delete this repo first or cr
                 base = config.repo_bases[repo.base]
                 if base.base:
                     error("A base can't be based on another base.\nPlese remove the 'base' field from any object in 'bases'")
-                repo = Config.Repo(**merge(base.__dict__, repo.__dict__))
+                repo_dict = repo.__dict__
+                repo = Config.Repo(repo_dict.pop("path"), **merge(base.__dict__, repo_dict))
             else:
                 error(f"Base '{repo.base}' doesn't exist")
 
@@ -303,6 +333,7 @@ If you need to back up some files from root, either delete this repo first or cr
 
     # repo config
     repo_config.gits = gits
+    repo_config.cmd = repo_config.cmd if repo_config.cmd else []
     repo_config.cmds = cmds
     write(REPO_CONFIG_PATH, json.dumps(repo_config.__dict__))
     print("Backup completed")

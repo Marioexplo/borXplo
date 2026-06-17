@@ -4,7 +4,6 @@ import subprocess
 from sys import exit
 from utils import typing, read, error
 from dataclasses import dataclass
-from beartype import beartype
 
 # prepare environment
 env = environ.copy()
@@ -34,12 +33,12 @@ def load_config(path: str, cls: typing.Type[_T]) -> _T:
     except (json.JSONDecodeError, BeartypeException) as e:
         error("JSON decoder exited with error: " + str(e))
 
-@beartype
 @dataclass
 class RepoInfo():
     quota: float | None
     gits: list[str]
     root: bool
+    cmd: list[str]
     cmds: dict[str, list[str]]
 
 SIGN = "this is a borXplo repo!"

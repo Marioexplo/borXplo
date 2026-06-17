@@ -116,6 +116,14 @@ and the extraction will require root privileges.
 It cannot be changed later.
 
 .TP
+.B cmd
+type: array
+.br
+description: This array can contain only strings.
+You can put here all of the commands that you want to be executed upon extraction.
+They will be executed after the extraction but before any \fBRepository cmd\fRs.
+
+.TP
 .B bases
 type: array
 .br
