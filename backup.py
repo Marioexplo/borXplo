@@ -42,7 +42,7 @@ def _main(target_path: str | None, config_path: str | None, profile: str) -> Non
     import os
     from datetime import datetime
     import locale
-    from glob import glob
+    from typing import Literal
     import json
     from last_backup import update_last
 
@@ -55,7 +55,6 @@ def _main(target_path: str | None, config_path: str | None, profile: str) -> Non
             path: str
             include: list[str] | None = None
             exclude: list[str] | None = None
-            patterns: list[str] | None = None
             git: bool | None = None
             directories: list[str] | None = None
             base: str | None = None
@@ -87,6 +86,7 @@ def _main(target_path: str | None, config_path: str | None, profile: str) -> Non
         stats: bool | None = None
         compression: str | None = None
         max_archives: int | None = None
+        default_pattern: str | None = None
         root: bool | None = None
         unmount: bool | None = None
         cmd: list[str] | None = None
@@ -271,14 +271,25 @@ If you need to back up some files from root, either delete this repo first or cr
     cmds: dict[str, list[str]] = {}
 
     pattern_args: list[str] = []
+    default_pattern = config.default_pattern if config.default_pattern else "sh"
     os.chdir("/" if config.root else HOME)
-    def realpath(pat: str) -> str:
-        return path.relpath(path.realpath(pat))
     def backup(repo: Config.Repo)->None:
         nonlocal backup_cmd, pattern_args
 
+        def add_pattern(prefix: Literal["+", "-"], pattern: str, pat: str) -> None:
+            nonlocal backup_cmd
+            backup_cmd += ["--pattern", f"{prefix} {pattern}:{pat}"]
+
+        def add_patterns(pats: list[str], prefix: Literal["+", "-"]) -> None:
+            for pat in pats:
+                pattern = default_pattern
+                if ":" in pat:
+                    pattern, _, pat = pat.partition(":")
+                pat = path.join(repo_path, pat)
+                add_pattern(prefix, pattern, pat)
+
         # get path
-        repo_path = realpath(repo.path)
+        repo_path = path.relpath(path.realpath(repo.path))
 
         # .borxplo feature
         dot_config = path.join(repo_path, ".borxplo.json")
@@ -299,22 +310,14 @@ If you need to back up some files from root, either delete this repo first or cr
             cmds[repo_path] = repo.cmd
 
         if repo.include:
-            for glob_path in repo.include:
-                backup_cmd += [realpath(p) for p in glob(path.join(repo_path, glob_path))]
+            add_patterns(repo.include, "+")
         elif not repo.git:
             backup_cmd.append(repo_path)
         if repo.git:
-            backup_cmd.append(path.join(repo_path, ".git"))
+            add_pattern("+", "sh", path.join(repo_path, ".git"))
             gits.append(repo_path)
         if repo.exclude:
-            for pattern in repo.exclude:
-                pattern_args += ["-e", path.join(repo_path, pattern)]
-        if repo.patterns:
-            for pattern in repo.patterns:
-                action, dd, pattern = pattern.partition(":")
-                if not dd:
-                    error("':' wasn't found in the pattern of the repo with path " + repo_path)
-                pattern_args += ["--pattern", action + dd + path.join(repo_path, pattern)]
+            add_patterns(repo.exclude, "-")
     for repo in config.repositories:
         # base feature
         if repo.base:

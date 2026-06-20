@@ -82,6 +82,16 @@ default: ∞
 description: When this number of archives is reached, the oldest one is deleted.
 
 .TP
+.B default_pattern
+type: string
+.br
+default: "sh"
+.br
+description: The default pattern for \fBinclude\fR and \fBexclude\fR.
+Options are \fBfm\fR, \fBsh\fR, \fBre\fR, \fBpp\fR and \fBpf\fR.
+See \fBborg help patterns\fR for details.
+
+.TP
 .B progress
 type: bool
 .br
@@ -152,34 +162,18 @@ Symlinks will be resolved.
 type: array
 .br
 description: When this option is used, only the paths in the array will be included.
-Paths are read from \fBpath\fR resolving symlinks and support \fBshell-like\fR patterns,
-this also means that a path that doesn't exist will just be ignored.
+Paths are read from \fBpath\fR and support patterns;
+see the \fBPatterns\fR paragraph for details on patterns and inclusion and exclusion.
 
 .TP
 .B exclude
 type: array
 .br
 description: Paths in this array will be excluded.
-These are read from \fBpath\fR and support \fBfnmatch\fR patterns.
-A directory excluded by this option will make \fBBorg\fR ignore any file and directory inside,
-even if you included it in a \fBpath\fR or \fBinclude\fR of any \fBRepository\fR;
-for details, see below the \fBNote on including and excluding at the same time\fR.
-
-.TP
-.B patterns
-type: array
-.br
-description: This option can be used to access the \fBpatterns\fR feature of \fBBorg\fR.
-Using this feature is usually not necessary and it's easier to just use \fBinclude\fR and \fBexclude\fR.
-See \fBborg help patterns\fR for details about this feature in \fBBorg\fR and also know that:
-.br
-.RS 10
-Paths are read from \fBpath\fR.
-.br
-\fB'sh:'\fR (for a shell-like pattern) is not implicit and cannot be omitted.
-.br
-The syntax prefixes R and P are not available.
-.RE
+Paths are read from \fBpath\fR and support patterns.
+A directory excluded by this option will make \fBBorg\fR ignore any file and directory inside it,
+even if you included it in a \fBpath\fR of any \fBRepository\fR  or \fBinclude\fR of following \fBRepository\fRs;
+see the \fBPatterns\fR paragraph for details on patterns and inclusion and exclusion.
 
 .TP
 .B git
@@ -219,23 +213,24 @@ description: Which base among \fBbases\fR will be used as a base for this \fBRep
 .RS 4
 .TP
 .B
-Note on including and excluding at the same time
-When you exclude a directory with \fBexclude\fR,
-even if you include a file or directory inside it with a \fBpath\fR or \fBinclude\fR of any \fBRepository\fR,
-that file or directory will still be ignored.
-To include it you must use the \fBpatterns\fR option, here's an example:
-if you want to back up \fBProjects\fR excluding the directory \fBPython\fR, which is inside of it, but keeping \fBPython/borXplo\fR,
-your Repo should look like this:
-.RS 10
-{
-    "path":"Projects",
-    "patterns": [
-        "+ sh:Python/borXplo",
-        "- sh:Python"
-    ]
+Patterns
+\fBborXplo\fR gives you many ways to save space, mostly by letting you back up only what you care about.
+The options \fBinclude\fR and \fBexclude\fR serve this purpose by letting you pass patterns to \fBBorg\fR.
+.sp
+Patterns can be wrote like this: [\fIPATTERN\fB:\fR]\fIPATH\fR,
+in which \fIPATTERN\fR is the type of pattern, as described in \fBborg help patterns\fR, and \fIPATH\fR is the path/actual pattern.
+When \fIPATTERN\fR is not specified, \fBdefault_pattern\fR is used.
+.sp
+Including and excluding has some particularities in Borg,
+since when you exclude a directory, but then you want to include a file inside that or a subdirectory, it's not as straightforward.
+When a directory is excluded by \fBexclude\fR, any file and directory contained by that directory,
+even when passed to \fBBorg\fR, will be ignored. However there are two exceptions:
 .br
-}
-.RE
+1) \fBpatterns\fR: including patterns specified before the excluding one are still valid. This means that \fBonly include\fRs
+which are in a \fBRepository\fR after the one in which you wrote the \fBexclude\fR pattern, will be ignored.
+.br
+2) the \fBpf\fR pattern: any file included with the \fBpf\fR pattern is always included,
+however this is not very useful since it will back up directories without their contents.
 .RE
 
 .TP
