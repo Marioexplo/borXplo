@@ -83,5 +83,9 @@ match argv.pop(1):
         with open(path.join(APP_FILES, "help.txt")) as help:
             print(help.read())
 
+    case "version" | "--version":
+        with open(path.join(APP_FILES, "version.txt")) as v:
+            print(v.read())
+
     case _:
         error("Invalid command\nRun 'borxplo help' for a list of available commands")

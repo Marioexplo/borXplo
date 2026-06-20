@@ -2,3 +2,6 @@ __pycache__
 build
 dist
 .venv
+package/borxplo*
+mans/borxplo*gz
+package/build.sh
