@@ -161,9 +161,10 @@ Symlinks will be resolved.
 .B include
 type: array
 .br
-description: When this option is used, only the paths in the array will be included.
-Paths are read from \fBpath\fR and support patterns;
-see the \fBPatterns\fR paragraph for details on patterns and inclusion and exclusion.
+description: Paths are read from \fBpath\fR resolving symlinks and support \fBshell-like\fR patterns,
+this also means that a path that doesn't exist will just be ignored.
+When this option is used, only the paths in this array will be included, while \fBpath\fR won't;
+if you want to include that, you can add \fR"."\fR.
 
 .TP
 .B exclude
@@ -171,9 +172,15 @@ type: array
 .br
 description: Paths in this array will be excluded.
 Paths are read from \fBpath\fR and support patterns.
-A directory excluded by this option will make \fBBorg\fR ignore any file and directory inside it,
-even if you included it in a \fBpath\fR of any \fBRepository\fR  or \fBinclude\fR of following \fBRepository\fRs;
-see the \fBPatterns\fR paragraph for details on patterns and inclusion and exclusion.
+See the \fBPatterns\fR paragraph for details on patterns and inclusion and exclusion.
+
+.TP
+.B patterns
+type: array
+.br
+description: Paths in this array will be included.
+Paths are read from \fBpath\fR and support patterns.
+See the \fBPatterns\fR paragraph for details on patterns and inclusion and exclusion.
 
 .TP
 .B git
@@ -181,10 +188,11 @@ type: bool
 .br
 default: false
 .br
-description: When this option is enabled, \fBborXplo\fR will only back up the \fBgit repository\fR (in the \fB.git\fR directory).
-Then, while extracting with \fBborxplo extract\fR, the \fBrepository\fR will be restored.
+description: When this option is enabled, \fBborXplo\fR will only back up the \fBgit repository\fR (in the \fB.git\fR directory),
+while the rest of the repository will be excluded (see the \fBPatterns\fR paragraph for details).
+Then, when extracting with \fBborxplo extract\fR, the \fBrepository\fR will be restored.
 .br
-You can add other files with the \fBinclude\fR option, this can be useful to back up files ignored by git.
+You can add other files with the \fBpatterns\fR option, this can be useful to back up files ignored by git.
 
 .TP
 .B directories
@@ -214,23 +222,22 @@ description: Which base among \fBbases\fR will be used as a base for this \fBRep
 .TP
 .B
 Patterns
-\fBborXplo\fR gives you many ways to save space, mostly by letting you back up only what you care about.
-The options \fBinclude\fR and \fBexclude\fR serve this purpose by letting you pass patterns to \fBBorg\fR.
+\fBborXplo\fR gives you many ways to save space and the \fBRepository\fR options
+\fBinclude\fR, \fBexclude\fR, \fBpatterns\fR and \fBgit\fR serve this purpose by letting you back up only what you care about
 .sp
-Patterns can be wrote like this: [\fIPATTERN\fB:\fR]\fIPATH\fR,
+\fBexclude\fR and \fBpatterns\fR patterns can be wrote like this: [\fIPATTERN\fB:\fR]\fIPATH\fR,
 in which \fIPATTERN\fR is the type of pattern, as described in \fBborg help patterns\fR, and \fIPATH\fR is the path/actual pattern.
 When \fIPATTERN\fR is not specified, \fBdefault_pattern\fR is used.
 .sp
-Including and excluding has some particularities in Borg,
-since when you exclude a directory, but then you want to include a file inside that or a subdirectory, it's not as straightforward.
-When a directory is excluded by \fBexclude\fR, any file and directory contained by that directory,
-even when passed to \fBBorg\fR, will be ignored. However there are two exceptions:
-.br
-1) \fBpatterns\fR: including patterns specified before the excluding one are still valid. This means that \fBonly include\fRs
-which are in a \fBRepository\fR after the one in which you wrote the \fBexclude\fR pattern, will be ignored.
-.br
-2) the \fBpf\fR pattern: any file included with the \fBpf\fR pattern is always included,
-however this is not very useful since it will back up directories without their contents.
+Including and excluding has some particularities in \fBBorg\fR and it isn't always straightforward.
+\fBborXplo\fR tries to simplify things, so this is what you need to keep in mind:
+\fBexclude\fR patterns always exclude paths written in \fBpath\fR or \fBinclude\fR, even if they appear after the \fBexclude\fR array;
+instead \fBpatterns\fR are always included but they need to be inside a directory of a \fBpath\fR or \fBinclude\fR.
+You should also bear in mind that when you use \fBgit\fR, two patterns are used:
+one to include the \fBgit repository\fR (.git) and one to exclude everything in \fBpath\fR.
+This means that \fBinclude\fR will not work and \fBborXplo\fR will give an error if you try to use it.
+.sp
+To check what was backed up you can use \fBborg list\fR and \fBborg mount\fR.
 .RE
 
 .TP

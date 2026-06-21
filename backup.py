@@ -43,6 +43,7 @@ def _main(target_path: str | None, config_path: str | None, profile: str) -> Non
     from datetime import datetime
     import locale
     from typing import Literal
+    from glob import glob
     import json
     from last_backup import update_last
 
@@ -55,6 +56,7 @@ def _main(target_path: str | None, config_path: str | None, profile: str) -> Non
             path: str
             include: list[str] | None = None
             exclude: list[str] | None = None
+            patterns: list[str] | None = None
             git: bool | None = None
             directories: list[str] | None = None
             base: str | None = None
@@ -270,16 +272,23 @@ If you need to back up some files from root, either delete this repo first or cr
     gits: list[str] = []
     cmds: dict[str, list[str]] = {}
 
-    pattern_args: list[str] = []
+    includes: list[str] = []
+    excludes: list[str] = []
     default_pattern = config.default_pattern if config.default_pattern else "sh"
     os.chdir("/" if config.root else HOME)
+    def realpath(pat: str) -> str:
+        return path.relpath(path.realpath(pat))
     def backup(repo: Config.Repo)->None:
-        nonlocal backup_cmd, pattern_args
+        nonlocal backup_cmd
 
-        def add_pattern(prefix: Literal["+", "-"], pattern: str, pat: str) -> None:
-            nonlocal pattern_args
-            pattern_args += ["--pattern", f"{prefix} {pattern}:{pat}"]
-
+        def add_pattern(prefix: Literal["+", "-"], typ: str, pat: str) -> None:
+            pattern = ["--pattern", f"{prefix} {typ}:{pat}"]
+            if prefix == "+":
+                nonlocal includes
+                includes += pattern
+            else:
+                nonlocal excludes
+                excludes += pattern
         def add_patterns(pats: list[str], prefix: Literal["+", "-"]) -> None:
             for pat in pats:
                 pattern = default_pattern
@@ -289,7 +298,7 @@ If you need to back up some files from root, either delete this repo first or cr
                 add_pattern(prefix, pattern, pat)
 
         # get path
-        repo_path = path.relpath(path.realpath(repo.path))
+        repo_path = realpath(repo.path)
 
         # .borxplo feature
         dot_config = path.join(repo_path, ".borxplo.json")
@@ -309,13 +318,20 @@ If you need to back up some files from root, either delete this repo first or cr
         if repo.cmd:
             cmds[repo_path] = repo.cmd
 
-        backup_cmd.append(repo_path)
         if repo.include:
-            add_patterns(repo.include, "+")
+            for glob_path in repo.include:
+                backup_cmd += [realpath(p) for p in glob(path.join(repo_path, glob_path), include_hidden=True)]
+        else:
+            backup_cmd.append(repo_path)
         if repo.exclude:
             add_patterns(repo.exclude, "-")
+        if repo.patterns:
+            add_patterns(repo.patterns, "+")
         if repo.git:
+            if repo.include:
+                error("'git' cannot be used with 'include'")
             add_pattern("+", "sh", path.join(repo_path, ".git"))
+            add_pattern("-", "sh", path.join(repo_path, "*"))
             gits.append(repo_path)
     for repo in config.repositories:
         # base feature
@@ -331,7 +347,7 @@ If you need to back up some files from root, either delete this repo first or cr
 
         backup(repo)
     print("Backing up...")
-    borg(backup_cmd + pattern_args)
+    borg(backup_cmd + includes + excludes)
 
     # repo config
     repo_config.gits = gits
