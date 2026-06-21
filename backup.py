@@ -277,8 +277,8 @@ If you need to back up some files from root, either delete this repo first or cr
         nonlocal backup_cmd, pattern_args
 
         def add_pattern(prefix: Literal["+", "-"], pattern: str, pat: str) -> None:
-            nonlocal backup_cmd
-            backup_cmd += ["--pattern", f"{prefix} {pattern}:{pat}"]
+            nonlocal pattern_args
+            pattern_args += ["--pattern", f"{prefix} {pattern}:{pat}"]
 
         def add_patterns(pats: list[str], prefix: Literal["+", "-"]) -> None:
             for pat in pats:
@@ -309,15 +309,14 @@ If you need to back up some files from root, either delete this repo first or cr
         if repo.cmd:
             cmds[repo_path] = repo.cmd
 
+        backup_cmd.append(repo_path)
         if repo.include:
             add_patterns(repo.include, "+")
-        elif not repo.git:
-            backup_cmd.append(repo_path)
+        if repo.exclude:
+            add_patterns(repo.exclude, "-")
         if repo.git:
             add_pattern("+", "sh", path.join(repo_path, ".git"))
             gits.append(repo_path)
-        if repo.exclude:
-            add_patterns(repo.exclude, "-")
     for repo in config.repositories:
         # base feature
         if repo.base:

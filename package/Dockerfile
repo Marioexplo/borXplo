@@ -6,4 +6,4 @@ RUN pip install beartype
 
 WORKDIR /build
 
-CMD pyinstaller borXplo.spec
+CMD pyinstaller borXplo.spec -y
