@@ -24,14 +24,18 @@ def borg(cmd: list[str], **kwargs) -> subprocess.CompletedProcess:
 _T = typing.TypeVar("_T")
 def load_config(path: str, cls: typing.Type[_T]) -> _T:
     import json
-    from beartype.roar import BeartypeException
+    from beartype.roar import BeartypeCallHintViolation
     try:
         d = json.loads(read(path))
         if type(d) is not dict:
             error(path + "was not a json object")
         return cls(**d)  # pyright: ignore[reportCallIssue]
-    except (json.JSONDecodeError, BeartypeException) as e:
-        error("JSON decoder exited with error: " + str(e))
+    except (json.JSONDecodeError, TypeError, BeartypeCallHintViolation) as e:
+        error(f"{
+            "JSON decoder exited with error while trying to parse"
+            if e is json.JSONDecodeError else
+            "An error was found in"
+        } {path}:\n{e}")
 
 @dataclass
 class RepoInfo():
