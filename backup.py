@@ -33,10 +33,9 @@ def notify(args: Namespace) -> None:
 
 def _main(target_path: str | None, config_path: str | None, profile: str) -> None:
     from utils import path, HOME, CONFIG, SHARE, error, read, write
-    from backup_utils import borg, env, load_config, RepoInfo, dataclass, is_backup_repo
+    from backup_utils import get_device, borg, env, load_config, RepoInfo, dataclass, is_backup_repo
     from dataclasses import field, InitVar
     from beartype import beartype
-    import pyudev
     import backup_utils
     import subprocess
     import os
@@ -143,60 +142,14 @@ def _main(target_path: str | None, config_path: str | None, profile: str) -> Non
     # get storage device
     print("Searching for target device")
     device_node: str | None = None
-    if target_path is None:
-        device_database = pyudev.Context()
-        if config.target_node is None:
-            if config.target_label is None:
-                error("target_label or target_node must be set to find your device")
-            devices: list[pyudev.Device] = list()
-            key = "ID_FS_LABEL"
-            storages = device_database.list_devices(subsystem="block")
-            if config.only_usb:
-                storages = [i for i in storages if i.find_parent(subsystem="usb")]
-            for storage in storages:
-                if key in storage.properties and storage.properties[key] == config.target_label:
-                    devices.append(storage)
-            if len(devices) == 1:
-                device_node = devices[0].device_node
-            else:
-                error(f"No device named '{config.target_label}' was found"
-                      if len(devices) == 0 else
-                      f"More than one device labelled '{config.target_label}' was found\nDisconnect one or change its label")
-        else:
-            try:
-                device_node = pyudev.Devices.from_device_file(device_database, config.target_node).device_node
-            except pyudev.DeviceNotFoundError:
-                error("No device was found at " + config.target_node)
-
-        # get device path to write
-        if type(device_node) is not str:
-            error("The device directory couldn't be found")
-        subprocess.run(["udisksctl", "mount", "-b", device_node], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env)
-        target_path = ""
-        for line in read("/proc/self/mounts").split("\n"):
-            if not line:
-                continue
-            parts = line.split()
-            if parts[0] == device_node:
-                target_path = parts[1]
-                break
-        if not target_path:
-            error(f"It was not possible to mount {device_node}\nMake sure that {
-                f"'{config.target_label}' points to"
-                if config.target_node is None else
-                f"'{config.target_node}' is"
-                } a valid device")
-    else:
-        target_path = path.abspath(target_path)
+    target_path = (
+        get_device(config.target_label, config.target_node, config.only_usb, config.directory)
+        if target_path is None else
+        path.abspath(target_path)
+    )
 
     def path_in_target(relative: str)->str:
         return path.join(target_path, relative)  # pyright: ignore[reportCallIssue, reportArgumentType]
-
-    # get backup repository
-    if config.directory is not None:
-        target_path = path_in_target(config.directory)
-        if not path.isdir(target_path):
-            error(config.directory + " was not a directory inside the target")
 
     if not is_backup_repo(target_path):
         if os.listdir(target_path):

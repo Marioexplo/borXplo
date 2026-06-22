@@ -57,24 +57,30 @@ match argv.pop(1):
 
     case "extract":
         import extract
-        from backup_utils import is_backup_repo, backup_repo_error
+        from backup_utils import get_device, is_backup_repo, backup_repo_error
         argparser.add_argument("--progress", action="store_true")
         argparser.add_argument("-y", "--yes", action="store_true")
-        argparser.add_argument("repo")
-        argparser.add_argument("profile", nargs="?")
+        argparser.add_argument("arg")
+        argparser.add_argument("-p", "--profile")
+        argparser.add_argument("-m", "--mode", choices=["label", "node", "path"], default="label")
+        argparser.add_argument("--only-usb", action="store_true")
+        argparser.add_argument("-d", "--directory")
         args = argparser.parse_args()
 
-        if not path.exists(args.repo):
-            error(args.repo + " doesn't seem to exist")
-        if not path.isdir(args.repo):
+        if args.mode != "path":
+            label, node = (args.arg, None) if args.mode == "label" else (None, args.arg)
+            args.arg = get_device(label, node, args.only_usb, args.directory)
+        if not path.exists(args.arg):
+            error(args.path + " doesn't seem to exist")
+        if not path.isdir(args.arg):
             error("A repository can't be a file!")
-        if not is_backup_repo(args.repo):
-            backup_repo_error(args.repo)
+        if not is_backup_repo(args.arg):
+            backup_repo_error(args.arg)
 
         call_main(
-            lambda profile: extract.main(path.join(args.repo, profile), args.progress, args.yes),
+            lambda profile: extract.main(path.join(args.arg, profile), args.progress, args.yes),
             "borXplo",
-            args.repo,
+            args.arg,
             "Extracting",
             args
         )

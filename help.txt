@@ -6,7 +6,7 @@ Usage: borxplo COMMAND
                         If ~/.config/borxplo/global.json exists,
                         it will be merged with the configuration file
                         If PROFILE is not expressed, back up all of the profiles
-                        The following options work only per execution.
+                        The following options work only per execution
         --repo PATH         Override the path to the repository with PATH
         --config PATH       Override the path to the configuration file with PATH.
                             With this option, the global configuration will be ignored
@@ -19,10 +19,19 @@ Usage: borxplo COMMAND
                         --repo and --config options are available and work as with 'backup'
         -d|--days DAYS      Ovverride the value previously set  by 'automatic' with DAYS
         --no-notify         If it's time to back up, remind via console instead of sending a notification
-    extract [--progress] [-y|--yes] PATH [PROFILE]
-                        Extract all of the contents from the repositories in PATH and restore them
-                        If PROFILE is given, just the corresponding repository will be extracted.
+    extract [--progress] [-y|--yes] ARGUMENT [-p|--profile PROFILE] [-m|--mode MODE] [--only-usb] [-d|--directory DIRECTORY]
+                        Extract all of the contents from the backup repository and restore them
         --progress          Show  progress. This will have a small impact on performance
         -y|--yes            Do not ask for confirmation
+        -p|--profile PROFILE
+                            With this option, just the corresponding profile will be extracted
+        -m|--mode MODE      Specify the mode for ARGUMENT
+                            MODE can be "label", to look for a device with label ARGUMENT,
+                            "node", to look for a device on node ARGUMENT,
+                            or "path", to consider ARGUMENT as the path to the repository
+                            The dafault is "label"
+        --only-usb          Wether to consider only USB devices
+        -d|--directory DIRECTORY
+                            The directory inside the device in which is the repository
 
 See 'man 5 borxplo' for the configuration guide
