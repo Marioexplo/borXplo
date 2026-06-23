@@ -9,7 +9,7 @@ build() {
 pack() {
     man() {
         f=borxplo.$1.gz
-        echo mans/$f=/usr/share/man/man$1/$f
+        echo ../mans/$f=/usr/share/man/man$1/$f
     }
 
     fpm \

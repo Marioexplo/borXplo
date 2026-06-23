@@ -30,7 +30,7 @@ def main(args: Namespace) -> None:
         if args.profile:
             error("Reading a passed configuration file does not allow the use of a profile, too")
         name: str = path.basename(args.config)
-        if not name.endswith(".json"):
+        if not name.endswith(".json") and len(name) != 5:
             error("Any configuration file must have the '.json' extension")
         args.profile = name[:-5]
 
@@ -68,7 +68,7 @@ def main(args: Namespace) -> None:
             if unavailable in configs:
                 configs.remove(unavailable)
         for i in range(len(configs)):
-            if configs[i].endswith(".json"):
+            if configs[i].endswith(".json") and len(configs[i]) != 5:
                 configs[i] = configs[i][:-5]
             else:
                 error("Each configuration file must have the '.json' extension")
