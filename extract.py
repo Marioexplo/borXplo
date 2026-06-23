@@ -10,7 +10,7 @@ def main(repo: str, progress: bool, yes: bool) -> None:
     print("Info about the repository that is about to be extracted:")
     backup_utils.borg(["info", repo])
     print("borXplo configuration:")
-    print(json.dumps(config.__dict__))
+    print(json.dumps(config.__dict__, indent=2))
     if not (yes or input("Is this ok? [Y/n] ").lower() == "y"):
         return
 

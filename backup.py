@@ -37,6 +37,8 @@ def main(args: Namespace) -> None:
     # device configuration
     dev_conf = None
     if args.repo:
+        target_path = path.abspath(args.repo)
+    else:
         @beartype
         @dataclass
         class Device:
@@ -49,8 +51,6 @@ def main(args: Namespace) -> None:
         print("Searching for target device")
         dev_conf = load_config(path.join(CONFIG, "device.json"), Device)
         device_node, target_path = get_device(dev_conf.target_label, dev_conf.target_node, dev_conf.only_usb, dev_conf.directory)
-    else:
-        target_path = path.abspath(args.repo)
 
     if not is_backup_repo(target_path):
         import os
@@ -70,8 +70,8 @@ def main(args: Namespace) -> None:
         for i in range(len(configs)):
             if configs[i].endswith(".json"):
                 configs[i] = configs[i][:-5]
-        else:
-            error("Each configuration file must have the '.json' extension")
+            else:
+                error("Each configuration file must have the '.json' extension")
     call_main(lambda profile: _main(target_path, args.config, profile), handle_unavailable, CONFIG, "Backing up", args.profile)
 
     # automatic unmounting and notifying
@@ -101,7 +101,6 @@ def _main(target_path: str, config_path: str | None, profile: str) -> None:
     import os
     from datetime import datetime
     import locale
-    from typing import Literal
     from glob import glob
     import json
     from last_backup import update_last
@@ -170,6 +169,7 @@ def _main(target_path: str, config_path: str | None, profile: str) -> None:
                     self.repo_bases[key] = BearConfig.Base(**bases[key])
 
     def merge(a: dict, b: dict) -> dict:
+        a = a.copy()
         for key, value in b.items():
             if value is None:
                 continue
@@ -272,21 +272,21 @@ If you need to back up some files from root, either delete this repo first or cr
     def backup(repo: Config.Repo)->None:
         nonlocal backup_cmd
 
-        def add_pattern(prefix: Literal["+", "-"], typ: str, pat: str) -> None:
-            pattern = ["--pattern", f"{prefix} {typ}:{pat}"]
-            if prefix == "+":
+        def add_pattern(add: bool, typ: str, pat: str) -> None:
+            pattern = f"{typ}:{pat}"
+            if add:
                 nonlocal includes
-                includes += pattern
+                includes += ["--pattern", "+ " + pattern]
             else:
                 nonlocal excludes
-                excludes += pattern
-        def add_patterns(pats: list[str], prefix: Literal["+", "-"]) -> None:
+                excludes += ["-e", pattern]
+        def add_patterns(pats: list[str], add: bool) -> None:
             for pat in pats:
                 pattern = default_pattern
                 if ":" in pat:
                     pattern, _, pat = pat.partition(":")
                 pat = path.join(repo_path, pat)
-                add_pattern(prefix, pattern, pat)
+                add_pattern(add, pattern, pat)
 
         # get path
         repo_path = realpath(repo.path)
@@ -315,14 +315,14 @@ If you need to back up some files from root, either delete this repo first or cr
         else:
             backup_cmd.append(repo_path)
         if repo.exclude:
-            add_patterns(repo.exclude, "-")
+            add_patterns(repo.exclude, False)
         if repo.patterns:
-            add_patterns(repo.patterns, "+")
+            add_patterns(repo.patterns, True)
         if repo.git:
             if repo.include:
                 error("'git' cannot be used with 'include'")
-            add_pattern("+", "sh", path.join(repo_path, ".git"))
-            add_pattern("-", "sh", path.join(repo_path, "*"))
+            add_pattern(True, "sh", path.join(repo_path, ".git"))
+            add_pattern(False, "sh", path.join(repo_path, "*"))
             gits.append(repo_path)
     for repo in config.repositories:
         # base feature
