@@ -45,7 +45,8 @@ class RepoInfo():
     cmd: list[str]
     cmds: dict[str, list[str]]
 
-def get_device(label: str | None, node: str | None, only_usb: bool | None, directory: str | None) -> str:
+def get_device(label: str | None, node: str | None, only_usb: bool | None, directory: str | None) -> tuple[str, str]:
+    """Returns device_node and target_path"""
     import pyudev
     from utils import path
 
@@ -96,7 +97,7 @@ def get_device(label: str | None, node: str | None, only_usb: bool | None, direc
         if not path.isdir(target_path):
             error(directory + " was not a directory inside the target")
 
-    return target_path
+    return (device_node, target_path)
 
 SIGN = "this is a borXplo repo!"
 def is_backup_repo(dir: str) -> bool:

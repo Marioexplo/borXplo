@@ -1,6 +1,6 @@
 from sys import exit
 import typing
-from argparse import ArgumentParser as _ArgParser, Namespace
+from argparse import ArgumentParser as _ArgParser
 from os import path
 
 def error(text: str)->typing.Never:
@@ -30,28 +30,21 @@ AUTOMATIC = path.join(SHARE, "automatic")
 
 def call_main(
     main: typing.Callable[[str], None],
-    unavailable: typing.Literal["global.json", "borXplo"],
+    handle_unavailable: typing.Callable[[list[str]], None],
     directory: str,
     action: str,
-    args: Namespace
+    profile: str | None
 ) -> None:
-    if args.profile:
-        if args.profile in ("global", "borXplo"):
-            error("A profile cannot be named " + args.profile)
-        main(args.profile)
+    if profile:
+        if profile in ("global", "borXplo", "device"):
+            error("A profile cannot be named " + profile)
+        main(profile)
     else:
         from os import listdir
-        configs = listdir(directory)
-        if unavailable in configs:
-            configs.remove(unavailable)
-        if unavailable == "global.json":
-            for i in range(len(configs)):
-                if configs[i].endswith(".json"):
-                    configs[i] = configs[i][:-5]
-                else:
-                    error("Each configuration file must have the '.json' extension")
+        profiles = listdir(directory)
+        handle_unavailable(profiles)
         msg = action + " profile: "
-        for profile in configs:
+        for profile in profiles:
             print(msg + profile)
             main(profile)
             print()

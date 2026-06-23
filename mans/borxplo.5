@@ -5,12 +5,14 @@ You can give information to \fBborXplo\fR about what you want to back up and whi
 
 .SH SYNOPSIS
 
+.RS -4
+
 .TP
-.B repos
-type: array
-.br
-description: Which of your repositories will be backed up and which options to use.
-The array can contain only objects. The options for these are described in the \fBRepository\fR paragraph.
+.B Device
+The device configuration. It will be looked for in \fB~/.config/borxplo/device.json\fR.
+This will be used when backing up one or all profiles, unless you specify the backup repository's path with \fB\-\-repo\fR.
+
+.RS
 
 .TP
 .B target_label
@@ -40,6 +42,29 @@ type: string
 .br
 description: The directory inside the device in which to install the backup repository.
 See the \fBFILES\fR section to view the file structure.
+
+.TP
+.B unmount
+type: bool
+.br
+default: false
+.br
+description: Wether to automatically unmount the external storage.
+
+.RE
+
+.TP
+.B Main configuration
+You can write configuration files in \fB~/.config/borxplo/\fIPROFILE\fB.json\fR.
+
+.RS
+
+.TP
+.B repos
+type: array
+.br
+description: Which of your repositories will be backed up and which options to use.
+The array can contain only objects. The options for these are described in the \fBRepository\fR paragraph.
 
 .TP
 .B check
@@ -106,14 +131,6 @@ type: bool
 default: false
 .br
 description: Wether to show statistics.
-
-.TP
-.B unmount
-type: bool
-.br
-default: false
-.br
-description: Wether to automatically unmount the external storage.
 
 .TP
 .B root

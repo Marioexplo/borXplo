@@ -1,4 +1,4 @@
-from utils import Namespace
+from argparse import Namespace
 from backup_utils import cmd_exists
 
 def backup_args() -> None:
@@ -7,18 +7,6 @@ def backup_args() -> None:
     argparser.add_argument("--repo")
     argparser.add_argument("--config")
     argparser.add_argument("profile", nargs="?")
-
-def main(args: Namespace) -> None:
-    from utils import call_main, CONFIG
-    if args.config:
-        from utils import error, path
-        if args.profile:
-            error("Reading a passed configuration file does not allow the use of a profile, too")
-        name: str = path.basename(args.config)
-        if not name.endswith(".json"):
-            error("Any configuration file must have the '.json' extension")
-        args.profile = name[:-5]
-    call_main(lambda profile: _main(args.repo, args.config, profile), "global.json", CONFIG, "Backing up", args)
 
 notifier_exists = cmd_exists("notify-send")
 NOTIFY_FLAGS = ["-a", "borXplo", "-i", "drive-removable-media"]
@@ -31,13 +19,85 @@ def notify(args: Namespace) -> None:
     ):
         main(args)
 
-def _main(target_path: str | None, config_path: str | None, profile: str) -> None:
+def main(args: Namespace) -> None:
+    from utils import call_main, CONFIG, path, error
+    from backup_utils import dataclass, load_config, get_device, is_backup_repo, backup_repo_error, env
+    from beartype import beartype
+    import subprocess
+
+    # if config, get profile from there
+    if args.config:
+        if args.profile:
+            error("Reading a passed configuration file does not allow the use of a profile, too")
+        name: str = path.basename(args.config)
+        if not name.endswith(".json"):
+            error("Any configuration file must have the '.json' extension")
+        args.profile = name[:-5]
+
+    # device configuration
+    dev_conf = None
+    if args.repo:
+        @beartype
+        @dataclass
+        class Device:
+            target_label: str | None = None
+            only_usb: bool | None = None
+            target_node: str | None = None
+            directory: str | None = None
+            unmount: bool | None = None
+
+        print("Searching for target device")
+        dev_conf = load_config(path.join(CONFIG, "device.json"), Device)
+        device_node, target_path = get_device(dev_conf.target_label, dev_conf.target_node, dev_conf.only_usb, dev_conf.directory)
+    else:
+        target_path = path.abspath(args.repo)
+
+    if not is_backup_repo(target_path):
+        import os
+        from utils import write
+        if os.listdir(target_path):
+            from backup_utils import backup_repo_error
+            backup_repo_error(target_path)
+        else:
+            from backup_utils import SIGN
+            write(path.join(target_path, "borXplo"), SIGN)
+
+    # main
+    def handle_unavailable(configs: list[str]) -> None:
+        for unavailable in ("device.json", "global.json"):
+            if unavailable in configs:
+                configs.remove(unavailable)
+        for i in range(len(configs)):
+            if configs[i].endswith(".json"):
+                configs[i] = configs[i][:-5]
+        else:
+            error("Each configuration file must have the '.json' extension")
+    call_main(lambda profile: _main(target_path, args.config, profile), handle_unavailable, CONFIG, "Backing up", args.profile)
+
+    # automatic unmounting and notifying
+    if dev_conf:
+        def unmount() -> None:
+            subprocess.run(["udisksctl", "unmount", "-b", device_node], stdout=subprocess.DEVNULL, env=env)  # pyright: ignore[reportPossiblyUnboundVariable]
+            print(f"Device {device_node if dev_conf.target_node else dev_conf.target_label} unmounted")  # pyright: ignore[reportPossiblyUnboundVariable]
+        if notifier_exists:
+            notify_cmd = ["notify-send", "Backup completed", "borXplo has completed the backup process."] + NOTIFY_FLAGS
+            if dev_conf.unmount:
+                unmount()
+                notify_cmd[2] += "\nThe media can now be removed."
+                subprocess.run(notify_cmd, env=env)
+            else:
+                notify_cmd += ["-A", "Unmount media"]
+                if subprocess.run(notify_cmd, capture_output=True, text=True, env=env).stdout:
+                    unmount()
+        elif dev_conf.unmount:
+            unmount()
+
+def _main(target_path: str, config_path: str | None, profile: str) -> None:
     from utils import path, HOME, CONFIG, SHARE, error, read, write
-    from backup_utils import get_device, borg, env, load_config, RepoInfo, dataclass, is_backup_repo
+    from backup_utils import borg, load_config, RepoInfo, dataclass
     from dataclasses import field, InitVar
     from beartype import beartype
     import backup_utils
-    import subprocess
     import os
     from datetime import datetime
     import locale
@@ -76,10 +136,6 @@ def _main(target_path: str | None, config_path: str | None, profile: str) -> Non
 
         repositories: list[Repo]
         repo_bases: Bases
-        target_label: str | None = None
-        only_usb: bool | None = None
-        target_node: str | None = None
-        directory: str | None = None
         quota: float | None = None
         check: bool | None = True
         full_check: int | None = None
@@ -89,7 +145,6 @@ def _main(target_path: str | None, config_path: str | None, profile: str) -> Non
         max_archives: int | None = None
         default_pattern: str | None = None
         root: bool | None = None
-        unmount: bool | None = None
         cmd: list[str] | None = None
     @beartype
     @dataclass
@@ -139,25 +194,8 @@ def _main(target_path: str | None, config_path: str | None, profile: str) -> Non
     if not config.repositories:
         error("""The 'repos' field was found missing or empty\nPlease fill it, otherwise, how would I know what to back up?""")
 
-    # get storage device
-    print("Searching for target device")
-    device_node: str | None = None
-    target_path = (
-        get_device(config.target_label, config.target_node, config.only_usb, config.directory)
-        if target_path is None else
-        path.abspath(target_path)
-    )
-
     def path_in_target(relative: str)->str:
         return path.join(target_path, relative)  # pyright: ignore[reportCallIssue, reportArgumentType]
-
-    if not is_backup_repo(target_path):
-        if os.listdir(target_path):
-            from backup_utils import backup_repo_error
-            backup_repo_error(target_path)
-        else:
-            from backup_utils import SIGN
-            write(path.join(target_path, "borXplo"), SIGN)
 
     target_path = path_in_target(profile)
     print("Target device configured")
@@ -321,21 +359,3 @@ If you need to back up some files from root, either delete this repo first or cr
 
     update_last()
     print("Your files have been successfully backed up")
-
-    # automatic unmounting and notifying
-    if device_node:
-        def unmount() -> None:
-            subprocess.run(["udisksctl", "unmount", "-b", device_node], stdout=subprocess.DEVNULL, env=env)
-            print(f"Device {device_node if config.target_node else config.target_label} unmounted")
-        if notifier_exists:
-            notify_cmd = ["notify-send", "Backup completed", "borXplo has completed the backup process."] + NOTIFY_FLAGS
-            if config.unmount:
-                unmount()
-                notify_cmd[2] += "\nThe media can now be removed."
-                subprocess.run(notify_cmd, env=env)
-            else:
-                notify_cmd += ["-A", "Unmount media"]
-                if subprocess.run(notify_cmd, capture_output=True, text=True, env=env).stdout:
-                    unmount()
-        elif config.unmount:
-            unmount()

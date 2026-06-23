@@ -69,7 +69,7 @@ match argv.pop(1):
 
         if args.mode != "path":
             label, node = (args.arg, None) if args.mode == "label" else (None, args.arg)
-            args.arg = get_device(label, node, args.only_usb, args.directory)
+            _, args.arg = get_device(label, node, args.only_usb, args.directory)
         if not path.exists(args.arg):
             error(args.path + " doesn't seem to exist")
         if not path.isdir(args.arg):
@@ -77,12 +77,15 @@ match argv.pop(1):
         if not is_backup_repo(args.arg):
             backup_repo_error(args.arg)
 
+        def handle_unavailable(repos: list[str]) -> None:
+            if "borXplo" in repos:
+                repos.remove("borXplo")
         call_main(
             lambda profile: extract.main(path.join(args.arg, profile), args.progress, args.yes),
-            "borXplo",
+            handle_unavailable,
             args.arg,
             "Extracting",
-            args
+            args.profile
         )
 
     case "-h" | "--help" | "help":
