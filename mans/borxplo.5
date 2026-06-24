@@ -1,0 +1,344 @@
+.TH borXplo 5 2026\-06\-13
+
+.SH DESCRIPTION
+You can give information to \fBborXplo\fR about what you want to back up and which options to use with a JSON file.
+
+.SH SYNOPSIS
+
+.RS -4
+
+.TP
+.B Device
+The device configuration. It will be looked for in \fB~/.config/borxplo/device.json\fR.
+This will be used when backing up one or all profiles, unless you specify the backup repository's path with \fB\-\-repo\fR.
+
+.RS
+
+.TP
+.B target_label
+type: string
+.br
+description: The label of the external storage in which to back up.
+.br
+It's usually the name displayed in file managers and \fIID_FS_LABEL\fR for \fBudev\fR.
+
+.TP
+.B only_usb
+type: bool
+.br
+default: false
+.br
+description: Wether to consider only USB devices when filtering labels.
+
+.TP
+.B target_node
+type: string
+.br
+description: The name of the device as in \fI/dev/...\fR. If this option is set, \fBtarget_label\fR is not considered.
+
+.TP
+.B directory
+type: string
+.br
+description: The directory inside the device in which to install the backup repository.
+See the \fBFILES\fR section to view the file structure.
+
+.TP
+.B unmount
+type: bool
+.br
+default: false
+.br
+description: Wether to automatically unmount the external storage.
+
+.RE
+
+.TP
+.B Main configuration
+You can write configuration files in \fB~/.config/borxplo/\fIPROFILE\fB.json\fR.
+
+.RS
+
+.TP
+.B repos
+type: array
+.br
+description: Which of your repositories will be backed up and which options to use.
+The array can contain only objects. The options for these are described in the \fBRepository\fR paragraph.
+
+.TP
+.B check
+type: bool
+.br
+default: true
+.br
+description: Wether to check the integrity of the repository.
+The consistency of the repository and archives and the correctness of the metadata will be verified.
+
+.TP
+.B full_check
+type: int
+.br
+description: How often to perform a \fBfull check\fR,
+which means also checking the archives data correctness on top of the normal \fBcheck\fR.
+The \fBfull check\fR will be performed after as many backups as specified by this field.
+When this field is not set, the \fBfull check\fR will never be performed.
+
+.TP
+.B quota
+type: float
+.br
+default: ∞
+.br
+description: The maximum space that can be occupied by the repository in Gb, after which \fBBorg\fR will complain.
+
+.TP
+.B compression
+type: string
+.br
+description: The type of compression to use. See \fBborg help compression\fR for the available options.
+
+.TP
+.B max_archives
+type: int
+.br
+default: ∞
+.br
+description: When this number of archives is reached, the oldest one is deleted.
+
+.TP
+.B default_pattern
+type: string
+.br
+default: "sh"
+.br
+description: The default pattern for \fBinclude\fR and \fBexclude\fR.
+Options are \fBfm\fR, \fBsh\fR, \fBre\fR, \fBpp\fR and \fBpf\fR.
+See \fBborg help patterns\fR for details.
+
+.TP
+.B progress
+type: bool
+.br
+default: false
+.br
+description: Wether to show progress.
+
+.TP
+.B stats
+type: bool
+.br
+default: false
+.br
+description: Wether to show statistics.
+
+.TP
+.B root
+type: bool
+.br
+default: false
+.br
+description: With this option, \fBpath\fRs will be read from \fB/\fR instead of \fIHOME\fR,
+and the extraction will require root privileges.
+It cannot be changed later.
+
+.TP
+.B cmd
+type: array
+.br
+description: This array can contain only strings.
+You can put here all of the commands that you want to be executed upon extraction.
+They will be executed after the extraction but before any \fBRepository cmd\fRs.
+
+.TP
+.B bases
+type: array
+.br
+description: This array can contain only objects formatted as \fBRepository\fR
+which can be used in any \fBRepository\fR in \fBrepos\fR as bases.
+Read the \fBMERGING\fR section for details on how \fBRepository\fRs are merged.
+
+.RS -4
+.TP
+.B
+Repository
+An object that indicates the files to back up and various options.
+
+.RS
+
+.TP
+.B path
+type: string
+.br
+description: The path to your repository.
+It will be read from your \fIHOME\fR directory, unless \fBroot\fR is enabled or the value starts with \fB/\fR.
+Symlinks will be resolved.
+
+.TP
+.B include
+type: array
+.br
+description: Paths are read from \fBpath\fR resolving symlinks and support \fBshell-like\fR patterns,
+this also means that a path that doesn't exist will just be ignored.
+When this option is used, only the paths in this array will be included, while \fBpath\fR won't;
+if you want to include that, you can add \fR"."\fR.
+
+.TP
+.B exclude
+type: array
+.br
+description: Paths in this array will be excluded.
+Paths are read from \fBpath\fR and support patterns.
+See the \fBPatterns\fR paragraph for details on patterns and inclusion and exclusion.
+
+.TP
+.B patterns
+type: array
+.br
+description: Paths in this array will be included.
+Paths are read from \fBpath\fR and support patterns.
+See the \fBPatterns\fR paragraph for details on patterns and inclusion and exclusion.
+
+.TP
+.B git
+type: bool
+.br
+default: false
+.br
+description: When this option is enabled, \fBborXplo\fR will only back up the \fBgit repository\fR (in the \fB.git\fR directory),
+while the rest of the repository will be excluded (see the \fBPatterns\fR paragraph for details).
+Then, when extracting with \fBborxplo extract\fR, the \fBrepository\fR will be restored.
+.br
+You can add other files with the \fBpatterns\fR option, this can be useful to back up files ignored by git.
+
+.TP
+.B directories
+type: array
+.br
+description: With this option, the backup program will run for each directory in this array read from \fBpath\fR.
+It will be like having one \fBRepository\fR for each directory in the array,
+with the specified directory as \fBpath\fR and all of the other options as in the current \fBRepository\fR.
+
+.TP
+.B cmd
+type: array
+.br
+description: An array of commands that will be executed upon extraction.
+This can be useful to restore your repositories, for instance by recreating virtual environments and downloading libraries.
+All of the commands will be executed from \fBpath\fR.
+
+.TP
+.B base
+type: string
+.br
+description: Which base among \fBbases\fR will be used as a base for this \fBRepository\fR.
+
+.RE
+
+.RS 4
+.TP
+.B
+Patterns
+\fBborXplo\fR gives you many ways to save space and the \fBRepository\fR options
+\fBinclude\fR, \fBexclude\fR, \fBpatterns\fR and \fBgit\fR serve this purpose by letting you back up only what you care about
+.sp
+\fBexclude\fR and \fBpatterns\fR patterns can be wrote like this: [\fIPATTERN\fB:\fR]\fIPATH\fR,
+in which \fIPATTERN\fR is the type of pattern, as described in \fBborg help patterns\fR, and \fIPATH\fR is the path/actual pattern.
+When \fIPATTERN\fR is not specified, \fBdefault_pattern\fR is used.
+.sp
+Including and excluding has some particularities in \fBBorg\fR and it isn't always straightforward.
+\fBborXplo\fR tries to simplify things, so this is what you need to keep in mind:
+\fBexclude\fR patterns always exclude paths written in \fBpath\fR or \fBinclude\fR, even if they appear after the \fBexclude\fR array;
+instead \fBpatterns\fR are always included but they need to be inside a directory of a \fBpath\fR or \fBinclude\fR.
+You should also bear in mind that when you use \fBgit\fR, two patterns are used:
+one to include the \fBgit repository\fR (.git) and one to exclude everything in \fBpath\fR.
+This means that \fBinclude\fR will not work and \fBborXplo\fR will give an error if you try to use it.
+.sp
+To check what was backed up you can use \fBborg list\fR and \fBborg mount\fR.
+.RE
+
+.TP
+.B
+Example
+{
+    "target_label": "Marioexplo pen-drive",
+    "only_usb": true,
+    "directory": "backup",
+    "compression": "lzma,8",
+    "repos": [
+        {
+            "path": ".config"
+        },
+        {
+            "path": "Projects",
+            "directories": [
+                "Python",
+                "C#"
+            ],
+            "git": true,
+            "include": [
+                "memo.txt"
+            ]
+        }
+    ],
+    "unmount": true
+.br
+}
+
+.SH MERGING
+\fBborXplo\fR gives you various options to write as little as possible by implementing many ways you can merge configurations.
+.sp
+When two objects, either \fBConfiguration\fR files or \fBRepository\fRs, are merged,
+all of the values from the second are added to the first, if a field is present in both, it gets replaced,
+unless it's an array, in which case the elements of the second array are added to the first.
+.sp
+\fBMerging\fR will happen in this cases:
+.IP \(bu 2
+\fBglobal.json\fR is present in the configuration directory and will be used as a base for any other configuration file.
+.IP \(bu 2
+The \fBbase\fR option in a \fBRepository\fR is used.
+.IP \(bu 2
+A \fB.borxplo.json\fR file is present in the \fBpath\fR of a \fBRepository\fR, so its contents will be merged in the \fBRepository\fR.
+
+.SH READING Repository
+When a \fBRepository\fR is read, this is the order that is followed:
+.IP \(bu 2
+The \fBbase\fR, if the field is present, is resolved.
+.IP \(bu 2
+\fBpath\fR is resolved.
+.IP \(bu 2
+If \fB.borxplo.json\fR is present, it's merged.
+.IP \(bu 2
+\fBdirectories\fR is resolved, creating a new \fBRepository\fR for each value in the array.
+These \fBRepository\fRs are then read again starting from resolving \fBpath\fR.
+.IP \(bu 2
+\fBcmd\fR is saved for extraction.
+.IP \(bu 2
+The actual paths to pass to \fBBorg\fR are read by interpreting \fBinclude\fR, \fBexclude\fR, \fBpatterns\fR and \fBgit\fR.
+
+.SH FILES
+This is the file structure used by \fBborXplo\fR.
+.sp
+This is what your configuration directory should look like:
+.br
+\fI~\fR/.config/borxplo/
+.br
+├── global.json
+.br
+└── \fIProfile\fR.json \fI...\fR
+.sp
+This is what your backup repository will look like:
+.br
+/run/media/\fIUSER\fR/\fItarget_label\fR/\fIdirectory\fR/
+.br
+├── .borXplo
+.br
+└── \fIProfile\fR/
+    ├── borXplo
+    └── \fIBorg repo\fR
+
+.SH NOTES
+You may have noticed that this software sometimes is referred as \fBborXplo\fR and sometimes \fBborxplo\fR.
+This is because, although its actual name is \fBborXplo\fR, the uppercase X in the middle of the name,
+even though it's very cool, makes it quite annoying to digit, so for any actual use case,
+like the command name and paths, \fBborxplo\fR is used.

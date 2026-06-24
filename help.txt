@@ -1,23 +1,37 @@
-Usage: borxplo [--path PATH] [--config PATH] [--gui]
-    Back up your data reading the options in ~/.config/borXplo/config.json
-    The following options work only per execution:
-        --path                  overrides the path to the repository
-        --config                overrides the path to the configuration file
-        --gui                   open with GUI
-
 Usage: borxplo COMMAND
-    COMMAND can be one of the following options:
-        help                shows this message
-        guide               shows a guide of the configuration file
-        auto DAYS           automatically checks if it's time to back up when you log in
-            DAYS            the amount of days after which to remember to back up
-                            if it's less than 1, the option is deactivated
-        check [-d|--days DAYS] [--no-gui] [--path PATH] [--config PATH]
-                            check if it's time to back up. This command is used by the 'automatic' option
-                            --path and --config options are available as in direct usage
-            -d|--days       overrides what is already set by the 'automatic' command
-            DAYS            the amount of days that need to have passed to back up
-            --no-gui        do not display the GUI before backing up
-        extract [--progress] PATH
-                            extract all contents from the repository at PATH to their respective paths
-            --progress      shows progress. This can make the process slower
+    COMMAND can be one of the following (with relative):
+
+    backup [--repo PATH] [--config PATH] [--notify] [PROFILE]
+                        Back up your data reading the options in ~/.config/borxplo/PROFILE.json
+                        If ~/.config/borxplo/global.json exists,
+                        it will be merged with the configuration file
+                        If PROFILE is not expressed, back up all of the profiles
+                        The following options work only per execution
+        --repo PATH         Override the path to the repository with PATH
+        --config PATH       Override the path to the configuration file with PATH.
+                            With this option, the global configuration will be ignored
+        --notify            Notify that it's time to back up
+    help                Show this message
+    automatic DAYS      Set borXplo to check if it's time to back up every time you log in
+                        If DAYS is less than 1, this functionality will be unset
+    check [-d|--days DAYS] [--no-nofify] [--repo PATH] [--config PATH]
+                        Check wether it's time to back up
+                        --repo and --config options are available and work as with 'backup'
+        -d|--days DAYS      Ovverride the value previously set  by 'automatic' with DAYS
+        --no-notify         If it's time to back up, remind via console instead of sending a notification
+    extract [--progress] [-y|--yes] ARGUMENT [-p|--profile PROFILE] [-m|--mode MODE] [--only-usb] [-d|--directory DIRECTORY]
+                        Extract all of the contents from the backup repository and restore them
+        --progress          Show  progress. This will have a small impact on performance
+        -y|--yes            Do not ask for confirmation
+        -p|--profile PROFILE
+                            With this option, just the corresponding profile will be extracted
+        -m|--mode MODE      Specify the mode for ARGUMENT
+                            MODE can be "label", to look for a device with label ARGUMENT,
+                            "node", to look for a device on node ARGUMENT,
+                            or "path", to consider ARGUMENT as the path to the repository
+                            The dafault is "label"
+        --only-usb          Wether to consider only USB devices
+        -d|--directory DIRECTORY
+                            The directory inside the device in which is the repository
+
+See 'man 5 borxplo' for the configuration guide

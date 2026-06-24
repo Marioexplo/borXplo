@@ -1,38 +1,35 @@
-from shell_utils import cmd_exists
-from utils import argparser, path, error, HOME, exit
+from backup_utils import cmd_exists
+from utils import argparser, path, error, HOME, call_main, SHARE
 from sys import argv, _MEIPASS as APP_FILES  # pyright: ignore[reportAttributeAccessIssue]
+import backup
 import os
 
 if not cmd_exists("borg"):
     error("Borg was not found. Install it before using borXplo")
 
-del argv[0]
-if len(argv) == 1 or argv[0][:2] == "--" and argv[0] != "--help":
-    argparser.add_argument("--path")
-    argparser.add_argument("--config")
-    argparser.add_argument("--gui", action="store_true")
-    args = argparser.parse_args()
+if not path.exists(SHARE):
+    os.mkdir(SHARE)
 
-    if args.gui:
-        import gui
-        gui.main()
-    else:
-        import backup
-        backup.main(args.path, args.config)
-    exit()
+if len(argv) == 1:
+    error("No command was given\nUse 'borxplo help' to get the list of commands and options")
 
 APP_FILES: str
-match argv.pop(0):
-    case "auto":
+match argv.pop(1):
+    case "backup":
+        argparser.add_argument("--notify", action="store_true")
+        backup.backup_args()
+        args = argparser.parse_args()
+        (backup.notify if args.notify else backup.main)(args)
+
+    case "automatic":
         from utils import AUTOMATIC, write
 
-        argparser.add_argument("days", required=True)
-        days_str: str = argparser.parse_args().days
-
+        argparser.add_argument("days")
+        args = argparser.parse_args()
         try:
-            days = int(days_str)
+            days = int(args.days)
         except ValueError:
-            error(days_str + " is not an integer")
+            error(args.days + " is not an integer")
 
         autostart = path.join(HOME, ".config/autostart")
         if not path.isdir(autostart):
@@ -47,7 +44,7 @@ match argv.pop(0):
         if days > 0:
             if not autostart_exists:
                 write(autostart, open(path.join(APP_FILES, "automatic.desktop")).read())
-            write(AUTOMATIC, days_str)
+            write(AUTOMATIC, args.days)
         elif autostart_exists:
             if path.isfile(autostart):
                 os.remove(autostart)
@@ -60,15 +57,44 @@ match argv.pop(0):
 
     case "extract":
         import extract
-        extract.main()
+        from backup_utils import get_device, is_backup_repo, backup_repo_error
+        argparser.add_argument("--progress", action="store_true")
+        argparser.add_argument("-y", "--yes", action="store_true")
+        argparser.add_argument("arg")
+        argparser.add_argument("-p", "--profile")
+        argparser.add_argument("-m", "--mode", choices=["label", "node", "path"], default="label")
+        argparser.add_argument("--only-usb", action="store_true")
+        argparser.add_argument("-d", "--directory")
+        args = argparser.parse_args()
+
+        if args.mode != "path":
+            label, node = (args.arg, None) if args.mode == "label" else (None, args.arg)
+            _, args.arg = get_device(label, node, args.only_usb, args.directory)
+        if not path.exists(args.arg):
+            error(args.path + " doesn't seem to exist")
+        if not path.isdir(args.arg):
+            error("A repository can't be a file!")
+        if not is_backup_repo(args.arg):
+            backup_repo_error(args.arg)
+
+        def handle_unavailable(repos: list[str]) -> None:
+            if "borXplo" in repos:
+                repos.remove("borXplo")
+        call_main(
+            lambda profile: extract.main(path.join(args.arg, profile), args.progress, args.yes),
+            handle_unavailable,
+            args.arg,
+            "Extracting",
+            args.profile
+        )
 
     case "-h" | "--help" | "help":
         with open(path.join(APP_FILES, "help.txt")) as help:
             print(help.read())
 
-    case "guide":
-        with open(path.join(APP_FILES, "config.guide.txt")) as guide:
-            print(guide.read())
+    case "version" | "--version":
+        with open(path.join(APP_FILES, "version.txt")) as v:
+            print(v.read())
 
     case _:
         error("Invalid command\nRun 'borxplo help' for a list of available commands")
