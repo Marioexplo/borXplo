@@ -2,7 +2,7 @@ from os import environ
 from shutil import which
 import subprocess
 from sys import exit
-from utils import typing, read, error
+from utils import typing, read
 from dataclasses import dataclass
 
 # prepare environment
@@ -25,6 +25,7 @@ _T = typing.TypeVar("_T")
 def load_config(path: str, cls: typing.Type[_T]) -> _T:
     import json
     from beartype.roar import BeartypeCallHintViolation
+    from utils import error
     try:
         d = json.loads(read(path))
         if type(d) is not dict:
@@ -49,6 +50,7 @@ def get_device(label: str | None, node: str | None, only_usb: bool | None, direc
     """Returns device_node and target_path"""
     import pyudev
     from utils import path
+    from utils import error
 
     device_database = pyudev.Context()
     if node is None:
@@ -107,6 +109,7 @@ def is_backup_repo(dir: str) -> bool:
 
 def backup_repo_error(dir: str) -> None:
     from sys import stderr
+    from utils import error
     msg = dir + " does not seem to be a borXplo backup repository"
     if stderr.isatty():
         print(msg, file=stderr)

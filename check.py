@@ -15,7 +15,7 @@ def main() -> None:
         from subprocess import run
         from sys import exit
         def notif_error(text: str) -> Never:
-            run(["notify-send", text] + NOTIFY_FLAGS)
+            run(["notify-send", "Error", text] + NOTIFY_FLAGS)
             exit(1)
         utils.error = notif_error
     def main() -> None:
