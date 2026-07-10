@@ -1,0 +1,11 @@
+Component: pyudev
+Version: 0.24.4
+License: LGPL-2.1-or-later
+Source: https://github.com/pyudev/pyudev
+The full text of the LGPL-2.1-or-later license is included with this package.
+
+Component: beartype
+Version: 0.22.9
+License: MIT
+Source: https://github.com/beartype/beartype
+The full text of the MIT license is included with this package.

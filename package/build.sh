@@ -7,9 +7,22 @@ build() {
 }
 
 pack() {
+    case $1 in
+        deb)
+            license=/usr/share/doc/borXplo
+            ;;
+        rpm)
+            license=/usr/share/licenses/borXplo
+            ;;
+        tar)
+            license=/license
+            root=/borXplo
+            ;;
+    esac
+
     man() {
         f=borxplo.$1.gz
-        echo ../mans/$f=/usr/share/man/man$1/$f
+        echo ../mans/$f=$root/usr/share/man/man$1/$f
     }
 
     fpm \
@@ -21,12 +34,15 @@ pack() {
         -d borgbackup \
         -d udisks2 \
         --description 'borXplo makes it easy to back up your data with BorgBackup, a deduplicating backup program.' \
-        --license MIT \
+        --license 'MIT AND LGPLv2.1-or-later' \
         --url https://github.com/Marioexplo/borXplo \
         --vendor Marioexplo \
-        $([[ $1 == deb ]] && echo '--deb-recommends libnotify' || [[ $1 == rpm ]] && echo '--rpm-tag Recommends:libnotify') \
-        ../dist/borxplo=/opt \
-        bin_link=/usr/bin/borxplo \
+        --deb-recommends libnotify \
+        --rpm-tag Recommends:libnotify \
+        ../dist/borxplo=$root/opt \
+        bin_link=$root/usr/bin/borxplo \
+        third-party-licenses=$license \
+        ../LICENSE=$license/LICENSE \
         $(man 1) \
         $(man 5)
 }
