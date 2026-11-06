@@ -1,23 +1,30 @@
 def main() -> None:
-    from backup import backup_args, notify, notifier_exists, NOTIFY_FLAGS
     import datetime
-    from utils import argparser, path, error, AUTOMATIC, read
-    from last_backup import LAST_BACKUP, DATE_FORMAT, update_last
+
+    from backup import NOTIFY_FLAGS, backup_args, notifier_exists, notify
+    from last_backup import DATE_FORMAT, LAST_BACKUP, update_last
+    from utils import AUTOMATIC, argparser, error, path, read
 
     argparser.add_argument("-d", "--days")
-    argparser.add_argument("--no-notify", action="store_false", default=True, dest="notify")
+    argparser.add_argument(
+        "--no-notify", action="store_false", default=True, dest="notify"
+    )
     backup_args()
     args = argparser.parse_args()
 
     if args.notify and notifier_exists:
-        import utils
-        from typing import Never
         from subprocess import run
         from sys import exit
+        from typing import Never
+
+        import utils
+
         def notif_error(text: str) -> Never:
             run(["notify-send", "Error", text] + NOTIFY_FLAGS)
             exit(1)
+
         utils.error = notif_error
+
     def main() -> None:
         notify(args)
 
@@ -30,7 +37,9 @@ def main() -> None:
         last_backup = datetime.datetime.strptime(last_backup, DATE_FORMAT).date()
     except ValueError:
         update_last()
-        error("It was not possible to parse the saved date of last backup\nThe file was overwritten with today's date")
+        error(
+            "It was not possible to parse the saved date of last backup\nThe file was overwritten with today's date"
+        )
 
     if args.days is None:
         if not path.exists(AUTOMATIC):

@@ -1,8 +1,10 @@
-from backup_utils import cmd_exists
-from utils import argparser, path, error, HOME, call_main, SHARE
-from sys import argv, _MEIPASS as APP_FILES  # pyright: ignore[reportAttributeAccessIssue]
-import backup
 import os
+from sys import _MEIPASS as APP_FILES  # pyright: ignore[reportAttributeAccessIssue]
+from sys import argv
+
+import backup
+from backup_utils import cmd_exists
+from utils import HOME, SHARE, argparser, call_main, error, path
 
 if not cmd_exists("borg"):
     error("Borg was not found. Install it before using borXplo")
@@ -11,7 +13,9 @@ if not path.exists(SHARE):
     os.mkdir(SHARE)
 
 if len(argv) == 1:
-    error("No command was given\nUse 'borxplo help' to get the list of commands and options")
+    error(
+        "No command was given\nUse 'borxplo help' to get the list of commands and options"
+    )
 
 APP_FILES: str
 match argv.pop(1):
@@ -34,16 +38,20 @@ match argv.pop(1):
         autostart = path.join(HOME, ".config/autostart")
         if not path.isdir(autostart):
             if path.exists(autostart):
-                error(autostart + " should not be a file!\nMove it away to allow procecesses to automatically start when you log in")
+                error(
+                    autostart
+                    + " should not be a file!\nMove it away to allow procecesses to automatically start when you log in"
+                )
             else:
                 from os import mkdir
+
                 mkdir(autostart)
 
         autostart = path.join(autostart, "borxplo.desktop")
         autostart_exists = path.exists(autostart)
         if days > 0:
             if not autostart_exists:
-                write(autostart, open(path.join(APP_FILES, "automatic.desktop")).read())
+                write(autostart, open(path.join(APP_FILES, "automatic.desktop")).read())  # noqa: SIM115
             write(AUTOMATIC, args.days)
         elif autostart_exists:
             if path.isfile(autostart):
@@ -53,16 +61,20 @@ match argv.pop(1):
 
     case "check":
         import check
+
         check.main()
 
     case "extract":
         import extract
-        from backup_utils import get_device, is_backup_repo, backup_repo_error
+        from backup_utils import backup_repo_error, get_device, is_backup_repo
+
         argparser.add_argument("--progress", action="store_true")
         argparser.add_argument("-y", "--yes", action="store_true")
         argparser.add_argument("arg")
         argparser.add_argument("-p", "--profile")
-        argparser.add_argument("-m", "--mode", choices=["label", "node", "path"], default="label")
+        argparser.add_argument(
+            "-m", "--mode", choices=["label", "node", "path"], default="label"
+        )
         argparser.add_argument("--only-usb", action="store_true")
         argparser.add_argument("-d", "--directory")
         args = argparser.parse_args()
@@ -80,12 +92,15 @@ match argv.pop(1):
         def handle_unavailable(repos: list[str]) -> None:
             if "borXplo" in repos:
                 repos.remove("borXplo")
+
         call_main(
-            lambda profile: extract.main(path.join(args.arg, profile), args.progress, args.yes),
+            lambda profile: extract.main(
+                path.join(args.arg, profile), args.progress, args.yes
+            ),
             handle_unavailable,
             args.arg,
             "Extracting",
-            args.profile
+            args.profile,
         )
 
     case "-h" | "--help" | "help":

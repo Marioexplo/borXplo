@@ -1,34 +1,58 @@
 from argparse import Namespace
+
 from backup_utils import cmd_exists
+
 
 def backup_args() -> None:
     """Add the arguments for backup"""
     from utils import argparser
+
     argparser.add_argument("--repo")
     argparser.add_argument("--config")
     argparser.add_argument("profile", nargs="?")
 
+
 notifier_exists = cmd_exists("notify-send")
 NOTIFY_FLAGS = ["-a", "borXplo", "-i", "drive-removable-media"]
+
+
 def notify(args: Namespace) -> None:
     from subprocess import run
+
     if (
-        run(["notify-send", "It's time to back up your data!", "-A", "Back up"] + NOTIFY_FLAGS, capture_output=True).stdout
-        if args.notify and notifier_exists else
-        input("It's time to back up your data!\nBack up now? [Y/n] ").lower() == "y"
+        run(
+            ["notify-send", "It's time to back up your data!", "-A", "Back up"]
+            + NOTIFY_FLAGS,
+            capture_output=True,
+        ).stdout
+        if args.notify and notifier_exists
+        else input("It's time to back up your data!\nBack up now? [Y/n] ").lower()
+        == "y"
     ):
         main(args)
 
+
 def main(args: Namespace) -> None:
-    from utils import call_main, CONFIG, path, error
-    from backup_utils import dataclass, load_config, get_device, is_backup_repo, backup_repo_error, env
-    from beartype import beartype
     import subprocess
+
+    from beartype import beartype
+
+    from backup_utils import (
+        backup_repo_error,
+        dataclass,
+        env,
+        get_device,
+        is_backup_repo,
+        load_config,
+    )
+    from utils import CONFIG, call_main, error, path
 
     # if config, get profile from there
     if args.config:
         if args.profile:
-            error("Reading a passed configuration file does not allow the use of a profile, too")
+            error(
+                "Reading a passed configuration file does not allow the use of a profile, too"
+            )
         name: str = path.basename(args.config)
         if not name.endswith(".json") and len(name) != 5:
             error("Any configuration file must have the '.json' extension")
@@ -39,6 +63,7 @@ def main(args: Namespace) -> None:
     if args.repo:
         target_path = path.abspath(args.repo)
     else:
+
         @beartype
         @dataclass
         class Device:
@@ -50,16 +75,25 @@ def main(args: Namespace) -> None:
 
         print("Searching for target device")
         dev_conf = load_config(path.join(CONFIG, "device.json"), Device)
-        device_node, target_path = get_device(dev_conf.target_label, dev_conf.target_node, dev_conf.only_usb, dev_conf.directory)
+        device_node, target_path = get_device(
+            dev_conf.target_label,
+            dev_conf.target_node,
+            dev_conf.only_usb,
+            dev_conf.directory,
+        )
 
     if not is_backup_repo(target_path):
         import os
+
         from utils import write
+
         if os.listdir(target_path):
             from backup_utils import backup_repo_error
+
             backup_repo_error(target_path)
         else:
             from backup_utils import SIGN
+
             write(path.join(target_path, "borXplo"), SIGN)
 
     # main
@@ -72,45 +106,70 @@ def main(args: Namespace) -> None:
                 configs[i] = configs[i][:-5]
             else:
                 error("Each configuration file must have the '.json' extension")
-    call_main(lambda profile: _main(target_path, args.config, profile), handle_unavailable, CONFIG, "Backing up", args.profile)
+
+    call_main(
+        lambda profile: _main(target_path, args.config, profile),
+        handle_unavailable,
+        CONFIG,
+        "Backing up",
+        args.profile,
+    )
 
     # automatic unmounting and notifying
     if dev_conf:
+
         def unmount() -> None:
-            subprocess.run(["udisksctl", "unmount", "-b", device_node], stdout=subprocess.DEVNULL, env=env)  # pyright: ignore[reportPossiblyUnboundVariable]
-            print(f"Device {device_node if dev_conf.target_node else dev_conf.target_label} unmounted")  # pyright: ignore[reportPossiblyUnboundVariable]
+            subprocess.run(
+                ["udisksctl", "unmount", "-b", device_node],  # pyright: ignore[reportPossiblyUnboundVariable]
+                stdout=subprocess.DEVNULL,
+                env=env,
+            )
+            print(
+                f"Device {device_node if dev_conf.target_node else dev_conf.target_label} unmounted"  # pyright: ignore[reportPossiblyUnboundVariable]
+            )
+
         if notifier_exists:
-            notify_cmd = ["notify-send", "Backup completed", "borXplo has completed the backup process."] + NOTIFY_FLAGS
+            notify_cmd = [
+                "notify-send",
+                "Backup completed",
+                "borXplo has completed the backup process.",
+            ] + NOTIFY_FLAGS
             if dev_conf.unmount:
                 unmount()
                 notify_cmd[2] += "\nThe media can now be removed."
                 subprocess.run(notify_cmd, env=env)
             else:
                 notify_cmd += ["-A", "Unmount media"]
-                if subprocess.run(notify_cmd, capture_output=True, text=True, env=env).stdout:
+                if subprocess.run(
+                    notify_cmd, capture_output=True, text=True, env=env
+                ).stdout:
                     unmount()
         elif dev_conf.unmount:
             unmount()
 
+
 def _main(target_path: str, config_path: str | None, profile: str) -> None:
-    from utils import path, HOME, CONFIG, SHARE, error, read, write
-    from backup_utils import borg, load_config, RepoInfo, dataclass
-    from dataclasses import field, InitVar
-    from beartype import beartype
-    import backup_utils
-    import os
-    from datetime import datetime
-    import locale
-    from glob import glob
     import json
+    import locale
+    import os
+    from dataclasses import InitVar, field
+    from datetime import datetime
+    from glob import glob
+
+    from beartype import beartype
+
+    import backup_utils
+    from backup_utils import RepoInfo, borg, dataclass, load_config
     from last_backup import update_last
+    from utils import CONFIG, HOME, SHARE, error, path, read, write
 
     # get config
     print("Retrievieng configuration file")
+
     @dataclass
-    class Config():
+    class Config:
         @dataclass
-        class Repo():
+        class Repo:
             path: str
             include: list[str] | None = None
             exclude: list[str] | None = None
@@ -126,11 +185,13 @@ def _main(target_path: str, config_path: str | None, profile: str) -> None:
 
         class Bases(dict[str, Base]):
             from typing import Any
+
             def to_dict(self) -> dict[str, Any]:
                 from typing import Any
+
                 d: dict[str, Any] = self.copy()
-                for key in d.keys():
-                    d[key] = d[key].__dict__
+                for key, value in d.items():
+                    d[key] = value.__dict__
                 return d
 
         repositories: list[Repo]
@@ -145,6 +206,7 @@ def _main(target_path: str, config_path: str | None, profile: str) -> None:
         default_pattern: str | None = None
         root: bool | None = None
         cmd: list[str] | None = None
+
     @beartype
     @dataclass
     class BearConfig(Config):
@@ -161,12 +223,16 @@ def _main(target_path: str, config_path: str | None, profile: str) -> None:
         bases: InitVar[dict[str, dict] | None] = None
         repo_bases: Config.Bases = field(init=False)
 
-        def __post_init__(self, repos: list[dict] | None, bases: dict[str, dict] | None) -> None:
-            self.repositories = [BearConfig.Repo(**repo) for repo in repos] if repos else []
+        def __post_init__(
+            self, repos: list[dict] | None, bases: dict[str, dict] | None
+        ) -> None:
+            self.repositories = (
+                [BearConfig.Repo(**repo) for repo in repos] if repos else []
+            )
             self.repo_bases = Config.Bases()
             if bases:
-                for key in bases.keys():
-                    self.repo_bases[key] = BearConfig.Base(**bases[key])
+                for key, value in bases.items():
+                    self.repo_bases[key] = BearConfig.Base(**value)
 
     def merge(a: dict, b: dict) -> dict:
         a = a.copy()
@@ -192,9 +258,11 @@ def _main(target_path: str, config_path: str | None, profile: str) -> None:
             global_opts = load_config(GLOBAL, BearConfig)
             config = Config(**merge(global_opts.__dict__, config.__dict__))
     if not config.repositories:
-        error("""The 'repos' field was found missing or empty\nPlease fill it, otherwise, how would I know what to back up?""")
+        error(
+            """The 'repos' field was found missing or empty\nPlease fill it, otherwise, how would I know what to back up?"""
+        )
 
-    def path_in_target(relative: str)->str:
+    def path_in_target(relative: str) -> str:
         return path.join(target_path, relative)  # pyright: ignore[reportCallIssue, reportArgumentType]
 
     target_path = path_in_target(profile)
@@ -228,9 +296,10 @@ def _main(target_path: str, config_path: str | None, profile: str) -> None:
 
         repo_config = load_config(REPO_CONFIG_PATH, RepoInfo)
 
-        def change_quota(arg)->None:
+        def change_quota(arg) -> None:
             borg(["config", target_path, "storage_quota", arg])
             print("New repository quota set")
+
         if quota_exists:
             if not repo_config.quota or config.quota != repo_config.quota:
                 change_quota(str(config.quota) + "G")
@@ -239,13 +308,19 @@ def _main(target_path: str, config_path: str | None, profile: str) -> None:
             change_quota("--delete")
             repo_config.quota = None
 
-        if repo_config.root if config.root is None else (config.root != repo_config.root):
+        if (
+            repo_config.root
+            if config.root is None
+            else (config.root != repo_config.root)
+        ):
             error("""You should not mix backups read from ~ and /
 If you need to back up some files from root, either delete this repo first or create another profile for those files""")
 
         print("Repository configured")
     else:
-        repo_config = RepoInfo(config.quota, [], False if config.root is None else config.root, [], {})
+        repo_config = RepoInfo(
+            config.quota, [], False if config.root is None else config.root, [], {}
+        )
         initializer = ["init", "-e", "none", target_path]
         if quota_exists:
             initializer += ["--storage-quota", f"{config.quota}G"]
@@ -256,10 +331,16 @@ If you need to back up some files from root, either delete this repo first or cr
     print("Reading repos")
     locale.setlocale(locale.LC_TIME, "")
     now = datetime.now()
-    backup_cmd = ["create", "-C", "lz4" if config.compression is None else config.compression]
+    backup_cmd = [
+        "create",
+        "-C",
+        "lz4" if config.compression is None else config.compression,
+    ]
     if config.stats:
         backup_cmd.append("-s")
-    backup_cmd.append(f"{target_path}::{now.strftime("%x").replace("/", ".")}-{now.strftime("%H.%M.%S")}")
+    backup_cmd.append(
+        f"{target_path}::{now.strftime('%x').replace('/', '.')}-{now.strftime('%H.%M.%S')}"
+    )
     gits: list[str] = []
     cmds: dict[str, list[str]] = {}
 
@@ -267,9 +348,11 @@ If you need to back up some files from root, either delete this repo first or cr
     excludes: list[str] = []
     default_pattern = config.default_pattern if config.default_pattern else "sh"
     os.chdir("/" if config.root else HOME)
+
     def realpath(pat: str) -> str:
         return path.relpath(path.realpath(pat))
-    def backup(repo: Config.Repo)->None:
+
+    def backup(repo: Config.Repo) -> None:
         nonlocal backup_cmd
 
         def add_pattern(add: bool, typ: str, pat: str) -> None:
@@ -280,6 +363,7 @@ If you need to back up some files from root, either delete this repo first or cr
             else:
                 nonlocal excludes
                 excludes += ["-e", pattern]
+
         def add_patterns(pats: list[str], add: bool) -> None:
             for pat in pats:
                 pattern = default_pattern
@@ -294,7 +378,11 @@ If you need to back up some files from root, either delete this repo first or cr
         # .borxplo feature
         dot_config = path.join(repo_path, ".borxplo.json")
         if path.isfile(dot_config):
-            repo = Config.Repo(**merge(repo.__dict__, load_config(dot_config, BearConfig.Repo).__dict__))
+            repo = Config.Repo(
+                **merge(
+                    repo.__dict__, load_config(dot_config, BearConfig.Repo).__dict__
+                )
+            )
 
         # directories feature
         if repo.directories:
@@ -311,7 +399,10 @@ If you need to back up some files from root, either delete this repo first or cr
 
         if repo.include:
             for glob_path in repo.include:
-                backup_cmd += [realpath(p) for p in glob(path.join(repo_path, glob_path), include_hidden=True)]
+                backup_cmd += [
+                    realpath(p)
+                    for p in glob(path.join(repo_path, glob_path), include_hidden=True)
+                ]
         else:
             backup_cmd.append(repo_path)
         if repo.exclude:
@@ -324,15 +415,20 @@ If you need to back up some files from root, either delete this repo first or cr
             add_pattern(True, "sh", path.join(repo_path, ".git"))
             add_pattern(False, "sh", path.join(repo_path, "*"))
             gits.append(repo_path)
+
     for repo in config.repositories:
         # base feature
         if repo.base:
             if repo.base in config.repo_bases:
                 base = config.repo_bases[repo.base]
                 if base.base:
-                    error("A base can't be based on another base.\nPlese remove the 'base' field from any object in 'bases'")
+                    error(
+                        "A base can't be based on another base.\nPlese remove the 'base' field from any object in 'bases'"
+                    )
                 repo_dict = repo.__dict__
-                repo = Config.Repo(repo_dict.pop("path"), **merge(base.__dict__, repo_dict))
+                repo = Config.Repo(
+                    repo_dict.pop("path"), **merge(base.__dict__, repo_dict)
+                )
             else:
                 error(f"Base '{repo.base}' doesn't exist")
 
@@ -349,12 +445,19 @@ If you need to back up some files from root, either delete this repo first or cr
 
     # compact repo
     if config.max_archives is not None:
-        archives_number = borg(["list", "--short", target_path],
-                               capture_output=True, text=True
-                               ).stdout.count("\n")
+        archives_number = borg(
+            ["list", "--short", target_path], capture_output=True, text=True
+        ).stdout.count("\n")
         if archives_number > config.max_archives:
             print("Compacting repository")
-            borg(["delete", target_path, "--first", str(archives_number - config.max_archives)])
+            borg(
+                [
+                    "delete",
+                    target_path,
+                    "--first",
+                    str(archives_number - config.max_archives),
+                ]
+            )
             borg(["compact", target_path])
 
     update_last()
