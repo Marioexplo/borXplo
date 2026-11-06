@@ -51,7 +51,7 @@ def main(args: Namespace) -> None:
     if args.config:
         if args.profile:
             error(
-                "Reading a passed configuration file does not allow the use of a profile, too"
+                "Reading a passed configuration file does not allow the use of a profile"
             )
         name: str = path.basename(args.config)
         if not name.endswith(".json") and len(name) != 5:
@@ -197,7 +197,7 @@ def _main(target_path: str, config_path: str | None, profile: str) -> None:
         repositories: list[Repo]
         repo_bases: Bases
         quota: float | None = None
-        check: bool | None = True
+        check: bool | None = None
         full_check: int | None = None
         progress: bool | None = None
         stats: bool | None = None

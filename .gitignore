@@ -1,6 +1,7 @@
-__pycache__
-build
-dist
-.venv
+src/__pycache__
+build/
+dist/
+.venv/
 package/borxplo*
 mans/borxplo*gz
+test/
