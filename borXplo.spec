@@ -1,11 +1,12 @@
-# -*- mode: python ; coding: utf-8 -*-
-
-
 a = Analysis(
-    ['main.py'],
+    ["src/main.py"],
     pathex=[],
     binaries=[],
-    datas=[("help.txt", "."), ("automatic.desktop", "."), ("package/version.txt", ".")],
+    datas=[
+        ("package/help.txt", "."),
+        ("package/automatic.desktop", "."),
+        ("package/version.txt", "."),
+    ],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
@@ -21,7 +22,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='borxplo',
+    name="borxplo",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -40,5 +41,5 @@ coll = COLLECT(
     strip=False,
     upx=True,
     upx_exclude=[],
-    name='borxplo',
+    name="borxplo",
 )
