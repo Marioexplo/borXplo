@@ -1,0 +1,53 @@
+name: Build and attack to release
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  build-and-upload:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Python setup
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.13"
+
+      - name: Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pyinstaller -r requirements.txt
+
+      - name: Build
+        run: python -m pyinstaller borXplo.spec -y
+
+      - name: Package
+        run: |
+          mkdir -p root/usr/share/man/man1
+          mkdir root/usr/share/man/man5
+          mkdir root/usr/bin
+          mkdir root/opt
+          mkdir licenses
+
+          cp -r dist/borxplo root/opt
+          cp -P package/bin_link root/usr/bin/borxplo
+
+          gzip -9 mans/* -k
+          cp mans/borxplo.1.gz root/usr/share/man/man1
+          cp mans/borxplo.5.gz root/usr/share/man/man5
+
+          cp -r LICENSE package/third-party-license licenses
+
+          tar -czf borxplo-$(cat package/version.txt).tar.gz root licenses
+
+      - name: Upload
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./borxplo-*.tar.gz
+          asset_name: $(basename ./borxplo-*.tar.gz)
+          asset_content_type: application/gzip
