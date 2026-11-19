@@ -75,7 +75,6 @@ def main(app_files: str) -> None:
             argparser.add_argument(
                 "-m", "--mode", choices=["label", "node", "path"], default="label"
             )
-            argparser.add_argument("--only-usb", action="store_true")
             argparser.add_argument("-d", "--directory")
             args = argparser.parse_args()
 
@@ -83,7 +82,7 @@ def main(app_files: str) -> None:
                 label, node = (
                     (args.arg, None) if args.mode == "label" else (None, args.arg)
                 )
-                _, args.arg = get_device(label, node, args.only_usb, args.directory)
+                _, args.arg = get_device(label, node, args.directory)
             if not path.exists(args.arg):
                 error(args.path + " doesn't seem to exist")
             if not path.isdir(args.arg):

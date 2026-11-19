@@ -30,7 +30,7 @@ If you prefer installing from source, you can clone this repository, and install
 ```sh
 python3.13 -m venv .venv
 source .venv/bin/activate
-pip install pyudev beartype
+pip install -r requirements.txt
 ```
 
 Other versions of Python might work, but it would be best if you used the same interpreter I use in this project.
@@ -42,9 +42,9 @@ If you would like to replicate one of the packages or you would just like to kno
 - BorgBackup.
 - glibc version 2.35 at least. This means that any system about or newer than Ubuntu 22.04 should be okay.
 - udisksctl: it usually comes preinstalled; it is needed unless you **always** give the path to the backup repository.
-- libnotify: this is required only if you want to receive notifications (through `notify-send`). However it's probable that you have it installed.
+- libnotify (optional): this is required only if you want to receive notifications (through `notify-send`). However it's probable that you have it installed.
 
 ## How borXplo was achieved
 
 borXplo is entirely written in Python.  
-Apart from using Borg (which should be clear at this point) through its CLI, borXplo also uses: [pyudev](https://github.com/pyudev/pyudev), a library that provides an interface to devices (like USB drives); [beartype](https://github.com/beartype/beartype), to type-check your configuration files; [PyInstaller](https://github.com/pyinstaller/pyinstaller), used to bundle borXplo.
+Apart from using Borg (which should be clear at this point) through its CLI, borXplo also uses: [beartype](https://github.com/beartype/beartype) to type-check your configuration files, and [PyInstaller](https://github.com/pyinstaller/pyinstaller) to bundle borXplo.

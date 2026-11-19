@@ -23,14 +23,6 @@ description: The label of the external storage in which to back up.
 It's usually the name displayed in file managers and \fIID_FS_LABEL\fR for \fBudev\fR.
 
 .TP
-.B only_usb
-type: bool
-.br
-default: false
-.br
-description: Wether to consider only USB devices when filtering labels.
-
-.TP
 .B target_node
 type: string
 .br
@@ -261,9 +253,7 @@ To check what was backed up you can use \fBborg list\fR and \fBborg mount\fR.
 .B
 Example
 {
-    "target_label": "Marioexplo pen-drive",
-    "only_usb": true,
-    "directory": "backup",
+    "max_archives": 3,
     "compression": "lzma,8",
     "repos": [
         {

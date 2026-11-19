@@ -62,40 +62,23 @@ class RepoInfo:
 
 
 def get_device(
-    label: str | None, node: str | None, only_usb: bool | None, directory: str | None
+    label: str | None, node: str | None, directory: str | None
 ) -> tuple[str, str]:
     """Returns device_node and target_path"""
-    import pyudev
-
     from utils import error, path
 
-    device_database = pyudev.Context()
     if node is None:
         if label is None:
             error("label or node of your device must be given to find it")
-        devices: list[pyudev.Device] = list()
-        key = "ID_FS_LABEL"
-        storages = device_database.list_devices(subsystem="block")
-        if only_usb:
-            storages = [i for i in storages if i.find_parent(subsystem="usb")]
-        for storage in storages:
-            if key in storage.properties and storage.properties[key] == label:
-                devices.append(storage)
-        if len(devices) == 1:
-            device_node = devices[0].device_node
-        else:
-            error(
-                f"No device named '{label}' was found"
-                if len(devices) == 0
-                else f"More than one device labelled '{label}' was found\nDisconnect one or change its label"
-            )
+        # Resolve device by label via /dev/disk/by-label
+        by_label_path = path.join("/dev/disk/by-label", label)
+        if not path.islink(by_label_path) and not path.exists(by_label_path):
+            error(f"No device named '{label}' was found")
+        device_node = path.realpath(by_label_path)
     else:
-        try:
-            device_node = pyudev.Devices.from_device_file(
-                device_database, node
-            ).device_node
-        except pyudev.DeviceNotFoundError:
-            error("No device was found at " + node)
+        device_node = node
+        if not path.exists(device_node):
+            error(f"No device was found at {node}")
 
     # get device path to write
     if type(device_node) is not str:

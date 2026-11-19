@@ -68,7 +68,6 @@ def main(args: Namespace) -> None:
         @dataclass
         class Device:
             target_label: str | None = None
-            only_usb: bool | None = None
             target_node: str | None = None
             directory: str | None = None
             unmount: bool | None = None
@@ -78,7 +77,6 @@ def main(args: Namespace) -> None:
         device_node, target_path = get_device(
             dev_conf.target_label,
             dev_conf.target_node,
-            dev_conf.only_usb,
             dev_conf.directory,
         )
 

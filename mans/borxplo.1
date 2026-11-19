@@ -71,7 +71,7 @@ If it's time to back up, remind via console instead of sending a notification.
 
 .TP
 \fBextract\fR [\fB\-\-progress\fR] [\fB\-y\fR|\fB\-\-yes\fR] \ARGUMENT\fR [\fB\-p\fR|\fB\-\-profile \fIPROFILE\fR] \
-[\fB\-m\fR|\fB\-\-\mode \fIMODE\fR] [\fB\-\-only-usb\fR] [\fB\-d\fR|\fB\-\-directory \fIDIRECTORY\fR]
+[\fB\-m\fR|\fB\-\-\mode \fIMODE\fR] [\fB\-d\fR|\fB\-\-directory \fIDIRECTORY\fR]
 Extract all of the contents from the backup repository and restore them.
 
 .RS 4
@@ -94,10 +94,6 @@ With this option, just the corresponding profile will be extracted.
 Specify the mode for ARGUMENT. MODE can be "label", to look for a device with label ARGUMENT,
 "node", to look for a device on node ARGUMENT, or "path", to consider ARGUMENT as the path to the repository.
 The dafault is "label".
-
-.TP
-.B \-\-only\-usb
-Wether to consider only USB devices
 
 .TP
 \fB\-d\fR|\fB\-\-directory \fIDIRECTORY\fR

@@ -19,7 +19,7 @@ Usage: borxplo COMMAND
                         --repo and --config options are available and work as with 'backup'
         -d|--days DAYS      Ovverride the value previously set  by 'automatic' with DAYS
         --no-notify         If it's time to back up, remind via console instead of sending a notification
-    extract [--progress] [-y|--yes] ARGUMENT [-p|--profile PROFILE] [-m|--mode MODE] [--only-usb] [-d|--directory DIRECTORY]
+    extract [--progress] [-y|--yes] ARGUMENT [-p|--profile PROFILE] [-m|--mode MODE] [-d|--directory DIRECTORY]
                         Extract all of the contents from the backup repository and restore them
         --progress          Show  progress. This will have a small impact on performance
         -y|--yes            Do not ask for confirmation
@@ -30,7 +30,6 @@ Usage: borxplo COMMAND
                             "node", to look for a device on node ARGUMENT,
                             or "path", to consider ARGUMENT as the path to the repository
                             The dafault is "label"
-        --only-usb          Wether to consider only USB devices
         -d|--directory DIRECTORY
                             The directory inside the device in which is the repository
 
