@@ -1,4 +1,7 @@
-name: Build and attack to release
+name: Build and attach to release
+
+permissions:
+  contents: write
 
 on:
   release:
@@ -23,7 +26,11 @@ jobs:
           python -m pip install pyinstaller -r requirements.txt
 
       - name: Build
-        run: python -m pyinstaller borXplo.spec -y
+        run: pyinstaller borXplo.spec -y
+
+      - name: Get package name
+        id: pack
+        run: echo "name=borxplo-$(cat package/version.txt).tar.gz" >> "$GITHUB_OUTPUT"
 
       - name: Package
         run: |
@@ -40,14 +47,11 @@ jobs:
           cp mans/borxplo.1.gz root/usr/share/man/man1
           cp mans/borxplo.5.gz root/usr/share/man/man5
 
-          cp -r LICENSE package/third-party-license licenses
+          cp -r LICENSE package/third-party-licenses licenses
 
-          tar -czf borxplo-$(cat package/version.txt).tar.gz root licenses
+          tar -czf ${{ steps.pack.outputs.name }} root licenses
 
       - name: Upload
-        uses: actions/upload-release-asset@v1
+        uses: softprops/action-gh-release@v2
         with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: ./borxplo-*.tar.gz
-          asset_name: $(basename ./borxplo-*.tar.gz)
-          asset_content_type: application/gzip
+          files: ${{ steps.pack.outputs.name }}
